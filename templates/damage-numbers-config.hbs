@@ -1,0 +1,56 @@
+<div class="effect-settings-form">
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-sliders-h"></i>
+      {{localize "showstopper.damageNumbers.SectionGeneral"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.damageNumbers.EnabledLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="enabled" {{#if enabled}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.damageNumbers.EnabledHint"}}</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-font"></i>
+      {{localize "showstopper.damageNumbers.SectionSettings"}}
+    </legend>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.damageNumbers.Font"}}</label>
+      <div class="form-fields">
+        <select name="font">
+          {{#each fonts}}
+            <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.damageNumbers.Size"}}</label>
+      <div class="form-fields">
+        <select name="size">
+          {{#each sizes}}
+            <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="button" class="form-btn btn-secondary" data-action="preview">
+      <i class="fas fa-eye"></i>
+      {{localize "showstopper.damageNumbers.Preview"}}
+    </button>
+    <button type="submit" class="form-btn btn-primary">
+      <i class="fas fa-save"></i>
+      {{localize "showstopper.damageNumbers.Save"}}
+    </button>
+  </footer>
+</div>

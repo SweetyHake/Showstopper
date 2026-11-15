@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "node16",
+        "moduleResolution": "node16",
+        "lib": ["ES2022"],
+        "strict": false,
+        "noEmitOnError": false,
+        "verbatimModuleSyntax": true,
+        "isolatedModules": true,
+        "skipLibCheck": true,
+        "newLine": "crlf"
+    },
+    "include": [
+        "types/**/*.d.ts",
+        "scripts/**/*.mts",
+        "scripts/**/*.ts",
+        "plus/scripts/**/*.mts",
+        "plus/scripts/**/*.ts"
+    ]
+}

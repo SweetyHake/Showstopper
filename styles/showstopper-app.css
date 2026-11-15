@@ -1,0 +1,552 @@
+/* Showstopper app chrome — cs-hero-box / fameosity design system.
+   All colors, spacing, and radii use --ss-* tokens (styles/app/_variables.css).
+   Dark theme by default; light theme via token overrides.
+
+   Structural class names (tab-btn / effect-card / ss-menu-search-*) are kept
+   intact because menu JS hooks rely on them (search, tabs, .hidden/.active). */
+
+/* ====== window ====== */
+
+.showstopper-app.application {
+  background: var(--ss-bg-primary);
+  border-radius: var(--ss-radius-md);
+  overflow: hidden;
+}
+
+/* standard-form adds flex gap -> transparent seam between header and content */
+.showstopper-app.standard-form {
+  gap: 0;
+}
+
+.showstopper-app .window-header {
+  border: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--ss-bg-primary);
+}
+
+/* Centered title layered behind header controls — signature chrome pattern */
+.showstopper-app .window-header .window-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  pointer-events: none;
+  background: transparent;
+  color: var(--ss-color-gold);
+  font-size: var(--ss-font-size-xl);
+  z-index: 0;
+}
+
+.showstopper-app .window-header .header-control,
+.showstopper-app .window-header button {
+  position: relative;
+  z-index: 1;
+  color: var(--ss-color-text-secondary);
+  transition: color var(--ss-transition-fast);
+}
+
+.showstopper-app .window-header .header-control:hover,
+.showstopper-app .window-header button:hover {
+  color: var(--ss-color-text-emphatic);
+}
+
+/* Window FA icon pinned to the left edge (FVTT 14: standalone header element) */
+.showstopper-app .window-header > i,
+.showstopper-app .window-header .window-icon {
+  position: absolute;
+  left: var(--ss-space-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ss-color-text-secondary);
+}
+
+.showstopper-app.window-content,
+.showstopper-app .window-content {
+  padding: 0;
+  overflow: hidden;
+  background: var(--ss-bg-primary);
+
+  /* Suppress mouse focus only: :focus is a superset of :focus-visible, so a
+     plain button:focus rule also killed the keyboard focus ring below */
+  & button.active,
+  & button:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+/* Keyboard focus ring uses accent; overridden selectively on text inputs below */
+.showstopper-app *:focus-visible {
+  outline: 2px solid var(--ss-accent);
+  outline-offset: 1px;
+}
+
+/* ====== scrollbars ====== */
+
+.showstopper-app ::-webkit-scrollbar { width: 8px; height: 8px; }
+
+.showstopper-app ::-webkit-scrollbar-track {
+  background: var(--ss-scrollbar-track);
+  border-radius: var(--ss-radius-sm);
+}
+
+.showstopper-app ::-webkit-scrollbar-thumb {
+  background: var(--ss-scrollbar-thumb);
+  border-radius: var(--ss-radius-sm);
+}
+
+.showstopper-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--ss-scrollbar-thumb-hover);
+}
+
+.showstopper-app ::-webkit-scrollbar-corner {
+  background: var(--ss-scrollbar-track);
+}
+
+/* Firefox */
+.showstopper-app,
+.showstopper-app * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ss-scrollbar-thumb) var(--ss-scrollbar-track);
+}
+
+/* ====== menu container ====== */
+
+/* Base window typography — fameosity pattern (.fame-relations-content):
+   all text inherits emphatic gold and md font size instead of core's grey defaults */
+.showstopper-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  font-size: var(--ss-font-size-md);
+  line-height: var(--ss-line-height);
+  color: var(--ss-color-text-emphatic);
+}
+
+/* ====== tabs ====== */
+
+.showstopper-app .tab-bar {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  /* Own background on the bar (cs-hero-box pattern) so tab labels never sit
+   directly over translucent scene bleed-through */
+  background: var(--ss-bg-primary);
+  border-top: 1px solid var(--ss-color-border);
+  border-bottom: 1px solid var(--ss-color-border);
+  flex-shrink: 0;
+}
+
+.showstopper-app .tab-btn {
+  flex: 1;
+  min-width: 0; /* allow shrinking beneath intrinsic text width so long labels never push tabs out */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ss-space-xs);
+  padding: var(--ss-space-sm);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--ss-color-border);
+  border-radius: 0;
+  color: var(--ss-color-text-secondary); /* secondary rather than subtle so tab labels read clearly */
+  font-size: var(--ss-font-size-sm);
+  font-weight: normal;
+  cursor: pointer;
+  transition: color var(--ss-transition-fast), background var(--ss-transition-fast);
+}
+
+.showstopper-app .tab-btn:last-child { border-right: none; }
+
+.showstopper-app .tab-btn:hover {
+  background: var(--ss-color-surface-hover);
+  color: var(--ss-color-text-secondary);
+}
+
+/* Active tab — bold orange with no fill (accent reserved strictly for interactive state) */
+.showstopper-app .tab-btn.active {
+  background: transparent;
+  color: var(--ss-accent);
+  font-weight: bold;
+}
+
+.showstopper-app .tab-btn.active i { color: var(--ss-accent); }
+
+.showstopper-app .tab-btn i {
+  font-size: var(--ss-font-size-md);
+  flex-shrink: 0;
+}
+
+/* Truncate long tab labels with ellipsis across any locale or UI scale */
+.showstopper-app .tab-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Target required for finishers" banner above the effect list */
+.showstopper-app .needs-target-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--ss-space-sm2);
+  margin: 0 0 var(--ss-space-xs) 0;
+  padding: var(--ss-space-xs) var(--ss-space-sm);
+  background: var(--ss-color-surface);
+  border: 1px solid var(--ss-color-border-soft);
+  border-radius: var(--ss-radius-md);
+  font-size: var(--ss-font-size-sm);
+  color: var(--ss-color-text-secondary);
+}
+
+.showstopper-app .needs-target-hint i {
+  color: var(--ss-color-warning);
+  font-size: var(--ss-font-size-sm);
+  flex-shrink: 0;
+}
+
+.showstopper-app .needs-target-hint.hidden {
+  display: none;
+}
+
+/* ====== search ====== */
+
+.showstopper-app .ss-menu-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ss-space-xs);
+  padding: var(--ss-space-sm);
+  flex-shrink: 0;
+}
+
+.showstopper-app .ss-menu-search-icon {
+  position: absolute;
+  left: calc(var(--ss-space-sm) + 0.625rem);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-xs);
+  pointer-events: none;
+}
+
+.showstopper-app .ss-menu-search-input {
+  width: 100%;
+  /* Size via padding (fameosity style): fixed height clashes with core input rules */
+  padding: var(--ss-space-xs) var(--ss-space-lg) var(--ss-space-xs) 2rem;
+  background: var(--ss-color-surface);
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  color: var(--ss-color-text-emphatic);
+  font-size: var(--ss-font-size-sm);
+  line-height: var(--ss-line-height);
+  transition: border-color var(--ss-transition-fast);
+}
+
+.showstopper-app .ss-menu-search-input:focus {
+  border-color: var(--ss-accent);
+  outline: none;
+  box-shadow: none;
+}
+
+.showstopper-app .ss-menu-search-input::placeholder {
+  color: var(--ss-color-text-subtle);
+}
+
+.showstopper-app .ss-menu-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.showstopper-app .ss-menu-search-clear {
+  position: absolute;
+  right: calc(var(--ss-space-sm) + 0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ss-color-text-secondary);
+  cursor: pointer;
+  font-size: var(--ss-font-size-xs);
+  transition: color var(--ss-transition-fast), background var(--ss-transition-fast);
+}
+
+.showstopper-app .ss-menu-search-clear:hover {
+  background: var(--ss-color-surface-hover);
+  color: var(--ss-color-text-emphatic);
+}
+
+.showstopper-app .ss-menu-search-clear.hidden {
+  display: none;
+}
+
+/* ====== effect list ====== */
+
+.showstopper-app .content-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--ss-space-sm);
+  scrollbar-gutter: stable;
+}
+
+.showstopper-app .effect-list {
+  display: none;
+  flex-direction: column;
+  gap: var(--ss-space-xs);
+}
+
+.showstopper-app .effect-list.active {
+  display: flex;
+}
+
+/* Card — flat filled block: surface fill, subtle border, gentle hover */
+.showstopper-app .effect-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ss-space-sm);
+  padding: var(--ss-space-sm);
+  background: var(--ss-color-surface);
+  border: 1px solid var(--ss-color-border-soft);
+  border-radius: var(--ss-radius-md);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.showstopper-app .effect-card:hover {
+  background: var(--ss-color-surface-hover);
+  border-color: var(--ss-color-border);
+}
+
+.showstopper-app .effect-card.disabled {
+  opacity: 0.5;
+}
+
+.showstopper-app .effect-card.disabled:hover {
+  background: var(--ss-color-surface);
+  border-color: var(--ss-color-border-soft);
+}
+
+/* Hidden by search filter */
+.showstopper-app .effect-card.hidden {
+  display: none;
+}
+
+/* Effect icon — recessed well */
+.showstopper-app .effect-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ss-bg-tertiary);
+  border: 1px solid var(--ss-color-border-soft);
+  border-radius: var(--ss-radius-md);
+  flex-shrink: 0;
+}
+
+.showstopper-app .effect-icon i {
+  font-size: var(--ss-font-size-lg);
+  color: var(--ss-color-gold);
+}
+
+.showstopper-app .effect-card.disabled .effect-icon {
+  background: var(--ss-color-surface);
+}
+
+.showstopper-app .effect-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.showstopper-app .effect-name {
+  margin: 0 0 2px 0;
+  font-size: var(--ss-font-size-md);
+  font-weight: 600;
+  color: var(--ss-color-text-emphatic);
+  line-height: var(--ss-line-height);
+}
+
+.showstopper-app .effect-description {
+  margin: 0 0 4px 0;
+  font-size: var(--ss-font-size-sm);
+  color: var(--ss-color-text-secondary);
+  line-height: var(--ss-line-height);
+}
+
+.showstopper-app .effect-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--ss-space-sm2);
+  margin: 0;
+  /* 2xs rather than xs: the smallest text in the window must still remain legible */
+  font-size: var(--ss-font-size-2xs);
+  color: var(--ss-color-text-subtle);
+  font-style: italic;
+}
+
+.showstopper-app .effect-hint i {
+  color: var(--ss-color-warning);
+  font-size: 0.6rem;
+}
+
+/* ====== card action buttons ====== */
+
+/* Card actions: quiet stacked buttons (preview/settings) on the left,
+   prominent play button flush right */
+.showstopper-app .effect-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ss-space-xs);
+  flex-shrink: 0;
+}
+
+.showstopper-app .effect-side-btns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ss-space-xs);
+}
+
+/* Quiet icon buttons */
+.showstopper-app .effect-preview-btn,
+.showstopper-app .effect-settings-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--ss-color-border-soft);
+  border-radius: var(--ss-radius-sm);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-2xs);
+  cursor: pointer;
+  transition: color var(--ss-transition-fast), background var(--ss-transition-fast),
+    border-color var(--ss-transition-fast), transform 0.1s ease;
+}
+
+.showstopper-app .effect-preview-btn:hover:not(:disabled),
+.showstopper-app .effect-settings-btn:hover:not(:disabled) {
+  background: var(--ss-color-surface-hover);
+  border-color: var(--ss-color-border);
+  color: var(--ss-color-text-emphatic);
+}
+
+.showstopper-app .effect-preview-btn:active:not(:disabled),
+.showstopper-app .effect-settings-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.showstopper-app .effect-preview-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Primary "play" button — accent fill; twice the size of the quiet buttons
+   (52px vs 26px), rightmost in the row */
+.showstopper-app .effect-play-btn {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--ss-accent);
+  border: none;
+  border-radius: var(--ss-radius-lg);
+  color: var(--ss-accent-contrast);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: filter var(--ss-transition-fast), transform 0.1s ease;
+}
+
+.showstopper-app .effect-play-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  color: var(--ss-accent-contrast);
+}
+
+.showstopper-app .effect-play-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.showstopper-app .effect-play-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ====== empty states ====== */
+
+.showstopper-app .empty-state,
+.showstopper-app .search-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ss-space-lg);
+  min-height: 160px;
+  padding: 2rem var(--ss-space-lg);
+  color: var(--ss-color-text-subtle);
+  text-align: center;
+}
+
+.showstopper-app .empty-state i,
+.showstopper-app .search-empty i {
+  font-size: 3rem;
+  opacity: 0.6;
+}
+
+.showstopper-app .empty-state p,
+.showstopper-app .search-empty p {
+  margin: 0;
+  font-size: var(--ss-font-size-sm);
+  color: var(--ss-color-text-secondary);
+  max-width: 28rem;
+}
+
+.showstopper-app .search-empty.hidden {
+  display: none;
+}
+
+/* Shortcut pills to jump to other tabs where search found matches */
+.showstopper-app .search-empty-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ss-space-sm2);
+}
+
+.showstopper-app .search-empty-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ss-space-xs);
+  padding: var(--ss-space-xs) var(--ss-space-sm);
+  background: var(--ss-color-surface);
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-md);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-sm);
+  cursor: pointer;
+  transition: color var(--ss-transition-fast), border-color var(--ss-transition-fast),
+    background var(--ss-transition-fast);
+}
+
+.showstopper-app .search-empty-tabs button:hover {
+  background: var(--ss-color-surface-hover);
+  border-color: var(--ss-accent);
+  color: var(--ss-color-text-emphatic);
+}
+
+.showstopper-app .search-empty-tabs button .count {
+  color: var(--ss-accent);
+  font-weight: 600;
+}

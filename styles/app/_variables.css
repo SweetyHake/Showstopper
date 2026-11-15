@@ -1,0 +1,98 @@
+/* Showstopper UI design tokens — cs-hero-box / fameosity design system.
+   Dark theme in :root, light theme as a complete override set below.
+   Rule: any new value must become a token here first before being used in
+   components. Whenever you add a token in :root, add its light-theme pair. */
+
+:root {
+  /* ====== spacing ====== */
+  --ss-space-xs: 0.25rem;
+  --ss-space-sm: 0.5rem;
+  --ss-space-sm2: 0.375rem;   /* intermediate 6px: between xs and sm */
+  --ss-space-md: 0.75rem;
+  --ss-space-lg: 1rem;
+
+  /* ====== border radii ====== */
+  --ss-radius-sm: 3px;
+  --ss-radius-md: 4px;
+  --ss-radius-lg: 6px;
+
+  /* ====== typography ====== */
+  --ss-font-size-2xs: 0.7rem;
+  --ss-font-size-xs: 0.65rem;
+  --ss-font-size-sm: 0.8rem;
+  --ss-font-size-md: 0.85rem;
+  --ss-font-size-lg: 0.9rem;
+  --ss-font-size-xl: 0.95rem;
+  --ss-line-height: 1.45;
+  --ss-letter-spacing-caps: 0.05em;
+
+  /* ====== transitions ====== */
+  --ss-transition-fast: 0.2s;
+
+  /* ====== palette (dark) ====== */
+  --ss-bg-primary: rgba(11, 10, 19, 0.9);          /* window background, popups */
+  --ss-color-surface: #302831;                     /* tiles, inputs */
+  --ss-color-surface-hover: #302c2a;               /* tile/button hover */
+  --ss-color-surface-active: rgba(255, 128, 0, 0.15); /* selected/active */
+  --ss-bg-tertiary: #0B0A13;                       /* wells, tracks, chips */
+  --ss-color-border: #3d3835;                      /* primary 1px borders */
+  --ss-color-border-soft: #2a2724;                 /* inner dividers */
+  --ss-color-gold: #d0b8a3;                        /* static warm accent */
+  --ss-color-text-emphatic: #d0b8a3;               /* primary text */
+  /* Muted tones — ONE STEP brighter than fameosity (#9f8475), which sat at
+   ~4:1 on #302831 at 0.8rem; lifted values reach ~5:1+. Light theme untouched. */
+  --ss-color-text-secondary: #b19a88;              /* secondary text */
+  --ss-color-text-subtle: #a58e7c;                 /* hints, disabled */
+  --ss-accent: var(--color-border-highlight, #ff6400); /* interactive ONLY */
+  --ss-accent-contrast: #ffffff;                   /* text/icon ON accent */
+  --ss-color-warning: #e9a03a;
+  --ss-color-error: #e93a3a;
+  --ss-danger-bg: rgba(233, 58, 58, 0.12);         /* active eraser / danger tint */
+  --ss-inset-bg: rgba(0, 0, 0, 0.25);              /* recessed groups (fieldset) */
+
+  /* ====== blood & snow (blood system) ====== */
+  --ss-blood-paint: #d5493d;                       /* brush paint color: cursor ring, icon */
+  --ss-snow-ring: #7ec8ff;                         /* icy snow cursor ring — readable on both white and dark */
+  --ss-snow-ring-halo: rgba(11, 14, 24, 0.72);     /* high-contrast snow ring halo over bright snowdrifts */
+
+  /* ====== scrollbars ====== */
+  --ss-scrollbar-track: #1a1a1a;
+  --ss-scrollbar-thumb: #4a4540;
+  --ss-scrollbar-thumb-hover: #5a554f;
+
+  /* ====== shadows ====== */
+  --ss-shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --ss-shadow-25: rgba(0, 0, 0, 0.25);             /* general-purpose alpha shadow */
+}
+
+/* ====== light theme ====== */
+/* Light-theme muted tones use fameosity values directly. */
+[data-theme="light"],
+.theme-light {
+  --ss-bg-primary: #f5f3f0;
+  --ss-color-surface: #eae7e3;
+  --ss-color-surface-hover: #d2cfc9;
+  --ss-color-surface-active: rgba(255, 128, 0, 0.12);
+  --ss-bg-tertiary: #dedbd6;
+  --ss-color-border: #c5c1ba;
+  --ss-color-border-soft: #d8d4cd;
+  --ss-color-gold: #4a4640;
+  --ss-color-text-emphatic: #1a1816;
+  --ss-color-text-secondary: #4a4640;
+  /* subtle darkened from #7a756d: sat at ~3.7:1 on #eae7e3 (below 4.5 for small text) */
+  --ss-color-text-subtle: #6b665e;
+  --ss-color-warning: #9a6a1a;  /* dark-theme #e9a03a only gives ~2:1 on light surfaces */
+  --ss-color-error: #cc2222;
+  --ss-danger-bg: rgba(204, 34, 34, 0.1);
+  --ss-inset-bg: rgba(0, 0, 0, 0.05);
+  --ss-accent-contrast: #ffffff;
+  --ss-blood-paint: #b0362c;
+  --ss-snow-ring: #1e6fb8;
+  --ss-snow-ring-halo: rgba(18, 24, 36, 0.55);
+  /* elevated: light-theme counterpart with lower alpha for a softer shadow */
+  --ss-shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+  --ss-shadow-25: rgba(0, 0, 0, 0.15);
+  --ss-scrollbar-track: #e0ddd8;
+  --ss-scrollbar-thumb: #b0a89d;
+  --ss-scrollbar-thumb-hover: #9a928a;
+}

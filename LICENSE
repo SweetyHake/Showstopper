@@ -1,0 +1,71 @@
+SHOWSTOPPER SOFTWARE LICENSE
+Copyright (c) 2025-2026 SweetyHake (https://boosty.to/sweetyhake)
+All rights reserved.
+
+================================================================================
+1. ENGLISH — PROPRIETARY PERSONAL-USE LICENSE
+================================================================================
+
+1.1. Grant of License
+Subject to the terms and conditions of this License, the author ("SweetyHake")
+grants you a free, non-exclusive, non-transferable, revocable license to
+download, install, and run an unmodified copy of the "Showstopper" module
+within Foundry Virtual Tabletop solely for personal tabletop roleplaying game
+sessions (as a Game Master or Player). Streaming or recording actual-play
+tabletop sessions in which this module is used in normal gameplay is permitted.
+
+1.2. Restrictions (All Rights Reserved)
+Except as expressly granted in Section 1.1, ALL RIGHTS ARE RESERVED. Without
+prior written permission from the author, you may NOT:
+  (a) copy, extract, modify, adapt, port, or create derivative works or forks
+      based on any part of this software, including its JavaScript/TypeScript
+      code, GLSL/PIXI shaders, procedural texture/audio generators, stylesheets,
+      templates, localization files, or visual assets;
+  (b) redistribute, republish, mirror, re-upload, bundle, sublicense, rent,
+      lease, or sell modified or unmodified copies of this module (or any part
+      thereof) on GitHub, GitLab, package registries, Discord servers, or any
+      other third-party service;
+  (c) incorporate any code, shaders, UI components, or assets from this module
+      into any other Foundry VTT module, game system, or software project,
+      whether free, open-source, or commercial.
+
+1.3. Disclaimer of Warranty & Limitation of Liability
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+2. РУССКИЙ — ЛИЦЕНЗИЯ НА ЛИЧНОЕ ИСПОЛЬЗОВАНИЕ (ВСЕ ПРАВА ЗАЩИЩЕНЫ)
+================================================================================
+
+2.1. Предоставление лицензии
+При условии соблюдения условий настоящей Лицензии автор («SweetyHake»)
+предоставляет вам бесплатную, неисключительную, непередаваемую, отзывную
+лицензию на загрузку, установку и использование неизменённой копии модуля
+«Showstopper» в среде Foundry Virtual Tabletop исключительно для проведения
+личных настольных ролевых игр (в качестве Мастера или Игрока). Трансляция и
+видеозапись игровых сессий, в ходе которых модуль используется по прямому
+назначению, разрешены.
+
+2.2. Ограничения (Все права защищены)
+За исключением прав, явно предоставленных в п. 2.1, ВСЕ ПРАВА ЗАЩИЩЕНЫ за
+автором. Без предварительного письменного разрешения автора ЗАПРЕЩАЕТСЯ:
+  (а) копировать, извлекать, изменять, адаптировать, портировать или создавать
+      производные работы и форки на основе любой части программного обеспечения,
+      включая код, шейдеры, процедурные генераторы графики и звука, таблицы
+      стилей, шаблоны, файлы локализации и визуальные ресурсы;
+  (б) распространять, повторно публиковать, зеркалировать, перезаливать,
+      включать в сборки, сублицензировать или продавать изменённые либо
+      неизменённые копии модуля (целиком или частично) на сторонних ресурсах;
+  (в) переносить код, шейдеры, элементы интерфейса или ресурсы модуля в другие
+      модули, игровые системы или программные продукты (бесплатные или платные).
+
+2.3. Отказ от гарантий и ограничение ответственности
+ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ ПРЕДОСТАВЛЯЕТСЯ «КАК ЕСТЬ» («AS IS»), БЕЗ КАКИХ-ЛИБО
+ПРЯМЫХ ИЛИ ПОДРАЗУМЕВАЕМЫХ ГАРАНТИЙ. АВТОР НЕ НЕСЁТ ОТВЕТСТВЕННОСТИ ЗА ЛЮБЫЕ
+УБЫТКИ ИЛИ ПРЕТЕНЗИИ, ВОЗНИКШИЕ В РЕЗУЛЬТАТЕ ИСПОЛЬЗОВАНИЯ ИЛИ НЕВОЗМОЖНОСТИ
+ИСПОЛЬЗОВАНИЯ ДАННОГО МОДУЛЯ.

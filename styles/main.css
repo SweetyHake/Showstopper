@@ -1,0 +1,69 @@
+@import url('./variables.css');
+@import url('./app/_variables.css');
+@import url('./showstopper-app.css');
+@import url('./actor-config.css');
+
+@import url('./discord.css');
+@import url('./voice-hud.css');
+@import url('./effect-settings.css');
+
+/* ── Intro overlays (extension framework): reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  [class*="-intro-overlay"],
+  [class*="-intro-overlay"] *,
+  [class*="-intro-overlay"] *::before,
+  [class*="-intro-overlay"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* ── Other infinite/decorative animations: reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .dvp-portrait-wrapper.dvp-speaking:not(.dvp-muted):not(.dvp-deafened) .dvp-portrait-container,
+  .dvp-portrait-wrapper.dvp-speaking:not(.dvp-muted):not(.dvp-deafened) .dvp-portrait-image,
+  .dvp-afk-text,
+  .dvp-breaktime-indicator,
+  .ss-status-bleeding::before,
+  .ss-status-paralyzed::before,
+  .ss-status-stunned::before,
+  .ss-status-ethereal::before,
+  .ss-status-burning::before,
+  .ss-status-burning::after,
+  .inventory-notification {
+    animation: none !important;
+  }
+}
+
+/* Full-screen cut-ins follow the actual viewport */
+:where([class*="-intro-overlay"]) {
+  box-sizing: border-box;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0;
+  min-height: 0;
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
+:where([class*="-intro-overlay"]) *,
+:where([class*="-intro-overlay"]) *::before,
+:where([class*="-intro-overlay"]) *::after {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+}
+
+:where([class*="-click-hint"]) {
+  bottom: max(30px, env(safe-area-inset-bottom)) !important;
+  max-width: calc(100vw - 32px);
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,538 @@
+:root {
+  --dvp-portrait-size: 108px;
+  --dvp-offset-x: 16px;
+  --dvp-offset-y: 40px;
+  --dvp-gap: clamp(0.375rem, 0.75vw, 0.75rem);
+}
+
+.discord-voice-portraits-container {
+  /* Lives inside native #ui-left and inherits its coordinate system, global
+     UI scale (--ui-scale), and z-index. Positioned absolutely within #ui-left
+     (out of the column flex flow) and anchored to the bottom-left corner;
+     width spans to the left edge of the hotbar (minus 8px, set by
+     applyPanelLayout), while _fitBelowSceneControls shrinks portraits
+     vertically so the panel always stays below the scene controls toolbar.
+     Columns have fixed width (portrait size) and pack left. NO overflow is
+     set here: anything other than visible clips ink overflow (speaking glow,
+     hover scale) along the panel edges; scrolling is enabled only via the
+     emergency .dvp-scroll fallback class below.
+     pointer-events: none is required because the container stretches across
+     to the hotbar and its empty tail must not swallow canvas clicks — pointer
+     events are re-enabled on individual portraits (.dvp-portrait-wrapper).
+     The container's contextmenu listener still works because descendant events
+     pass through it during the capture phase regardless of pointer-events. */
+  position: absolute;
+  left: var(--dvp-offset-x);
+  bottom: var(--dvp-offset-y);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--dvp-portrait-size, 96px));
+  gap: var(--dvp-gap);
+  align-content: end;
+  align-items: start;
+  pointer-events: none;
+}
+
+/* Emergency fallback from _fitBelowSceneControls when even the minimum
+   portrait size cannot fit below scene controls. Enable scrolling only here
+   (with explicit overflow-x: hidden, since setting overflow-y != visible
+   would otherwise compute overflow-x to auto, and the panel never overflows
+   horizontally). */
+.discord-voice-portraits-container.dvp-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.dvp-portrait-wrapper {
+  --user-color: #444444;
+  /* Container has pointer-events: none (so its empty tail to the hotbar stays
+     click-through) — re-enable interactivity on the portraits themselves. */
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+  min-width: 0;
+}
+
+.dvp-portrait-inner {
+  /* 100% width is required: inner is a flex item with shrink-to-fit width, so
+     without it .dvp-portrait-container's width: 100% becomes cyclic and each
+     portrait sizes to its raw image dimensions instead of a uniform cell. */
+  width: 100%;
+  transition: transform 0.2s ease;
+}
+
+.dvp-portrait-wrapper:hover .dvp-portrait-inner {
+  transform: scale(1.05);
+}
+
+.dvp-portrait-wrapper.dvp-speaking:not(.dvp-muted):not(.dvp-deafened) .dvp-portrait-inner {
+  transform: scale(1.05);
+}
+
+.dvp-portrait-container {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: clamp(0.125rem, 0.25vw, 0.25rem) solid var(--user-color);
+  background-color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: box-shadow 0.3s ease;
+  border-radius: clamp(0.25rem, 0.4vw, 0.5rem);
+}
+
+.dvp-health-bar {
+  --damage-percent: 0%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    rgba(200, 0, 0, 0.6) 0%,
+    rgba(200, 0, 0, 0.6) var(--damage-percent),
+    transparent var(--damage-percent),
+    transparent 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+.dvp-health-bar.visible {
+  opacity: 1;
+}
+
+.dvp-portrait-wrapper.dvp-speaking:not(.dvp-muted):not(.dvp-deafened) .dvp-portrait-container {
+  box-shadow:
+    0 0 0 3px rgba(67, 181, 129, 0.4),
+    0 0 12px rgba(67, 181, 129, 0.6),
+    0 0 24px rgba(67, 181, 129, 0.3);
+  animation: dvp-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dvp-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(67, 181, 129, 0.4),
+      0 0 12px rgba(67, 181, 129, 0.6),
+      0 0 24px rgba(67, 181, 129, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(67, 181, 129, 0.6),
+      0 0 18px rgba(67, 181, 129, 0.8),
+      0 0 32px rgba(67, 181, 129, 0.4);
+  }
+}
+
+.dvp-portrait-image {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transition: transform 0.1s ease;
+}
+
+.dvp-portrait-wrapper.dvp-speaking:not(.dvp-muted):not(.dvp-deafened) .dvp-portrait-image {
+  animation: dvp-shake 0.3s ease-in-out infinite;
+}
+
+html.dvp-no-shake .dvp-portrait-wrapper.dvp-speaking:not(.dvp-muted):not(.dvp-deafened) .dvp-portrait-image {
+  animation: none;
+}
+
+@keyframes dvp-shake {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-1px); }
+  75% { transform: translateY(1px); }
+}
+
+.dvp-muted-indicator {
+  position: absolute;
+  bottom: clamp(0.125rem, 0.25vw, 0.25rem);
+  right: clamp(0.125rem, 0.25vw, 0.25rem);
+  width: clamp(0.875rem, 1.5vw, 1.375rem);
+  height: clamp(0.875rem, 1.5vw, 1.375rem);
+  background-color: #ed4245;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border: 2px solid #1a1a1a;
+  z-index: 10;
+}
+
+.dvp-muted-indicator i {
+  color: white;
+  font-size: clamp(0.35rem, 0.7vw, 0.6rem);
+}
+
+.dvp-portrait-wrapper.dvp-muted .dvp-muted-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dvp-deafened-indicator {
+  position: absolute;
+  bottom: clamp(0.125rem, 0.25vw, 0.25rem);
+  left: clamp(0.125rem, 0.25vw, 0.25rem);
+  width: clamp(0.875rem, 1.5vw, 1.375rem);
+  height: clamp(0.875rem, 1.5vw, 1.375rem);
+  background-color: #ed4245;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border: 2px solid #1a1a1a;
+  z-index: 10;
+}
+
+.dvp-deafened-indicator i {
+  color: white;
+  font-size: clamp(0.35rem, 0.7vw, 0.6rem);
+}
+
+.dvp-portrait-wrapper.dvp-deafened .dvp-deafened-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dvp-portrait-name {
+  margin-top: clamp(0.2rem, 0.4vw, 0.375rem);
+  font-size: clamp(0.45rem, 0.8vw, 0.75rem);
+  color: #ffffff;
+  text-shadow:
+    1px 1px 2px #000,
+    -1px -1px 2px #000,
+    1px -1px 2px #000,
+    -1px 1px 2px #000;
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.dvp-drag-ghost {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0.8;
+  transform: translate(-50%, -50%);
+}
+
+.dvp-drag-ghost img {
+  width: clamp(2.5rem, 4vw, 4rem);
+  height: clamp(2.5rem, 4vw, 4rem);
+  object-fit: cover;
+  border-radius: clamp(0.25rem, 0.4vw, 0.5rem);
+  border: 2px solid var(--color-border-highlight, #7a7971);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+body.dvp-dragging {
+  cursor: grabbing !important;
+}
+
+body.dvp-dragging * {
+  cursor: grabbing !important;
+}
+
+.dvp-display-mode-group {
+  display: flex;
+  gap: 0;
+  width: 100%;
+}
+
+.dvp-mode-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ss-space-sm2);
+  padding: 7px 8px;
+  flex: 1 1 0;
+  border: 1px solid var(--ss-color-border);
+  border-radius: 0;
+  cursor: pointer;
+  user-select: none;
+  background: var(--ss-color-surface);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-sm);
+  font-weight: 500;
+  transition: background var(--ss-transition-fast), border-color var(--ss-transition-fast), color var(--ss-transition-fast);
+  text-align: center;
+}
+
+.dvp-mode-btn:first-child {
+  border-radius: var(--ss-radius-sm) 0 0 var(--ss-radius-sm);
+}
+
+.dvp-mode-btn:last-child {
+  border-radius: 0 var(--ss-radius-sm) var(--ss-radius-sm) 0;
+}
+
+.dvp-mode-btn:not(:first-child) {
+  margin-left: -1px;
+}
+
+.dvp-mode-btn input[type="radio"] {
+  display: none;
+}
+
+.dvp-mode-btn.active,
+.dvp-mode-btn:has(input:checked) {
+  z-index: 1;
+  background: var(--ss-color-surface-active);
+  border-color: var(--ss-accent);
+  color: var(--ss-accent);
+  font-weight: 600;
+}
+
+.dvp-mode-btn:hover {
+  z-index: 1;
+  background: var(--ss-color-surface-hover);
+  border-color: var(--ss-color-border);
+  color: var(--ss-color-text-emphatic);
+}
+
+.dvp-mode-btn.active:hover,
+.dvp-mode-btn:has(input:checked):hover {
+  border-color: var(--ss-accent);
+  color: var(--ss-accent);
+}
+
+.dvp-image-field {
+  display: flex;
+  align-items: center;
+  gap: var(--ss-space-sm2);
+  width: 100%;
+}
+
+.dvp-image-field input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.dvp-preview {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--ss-radius-sm);
+  border: 1px solid var(--ss-color-border);
+  background: var(--ss-bg-tertiary);
+  flex-shrink: 0;
+}
+
+.dvp-stats-widget {
+  /* Lives inside native #ui-left (mounted by _createStatsWidget): positioned
+     absolutely in the bottom-left corner beneath the portraits; inherits UI scale. */
+  position: absolute;
+  bottom: 8px;
+  left: var(--dvp-offset-x);
+  display: flex;
+  align-items: center;
+  gap: clamp(0.2rem, 0.4vw, 0.375rem);
+  padding: clamp(0.125rem, 0.25vw, 0.25rem) clamp(0.25rem, 0.5vw, 0.5rem);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: clamp(0.4rem, 0.7vw, 0.625rem);
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.dvp-stat-item {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.125rem, 0.25vw, 0.25rem);
+  color: #43b581;
+  white-space: nowrap;
+}
+
+.dvp-stat-item i {
+  font-size: clamp(0.3rem, 0.5vw, 0.5rem);
+  opacity: 0.7;
+}
+
+.dvp-stat-sep {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.dvp-stat-breaktime-item {
+  padding: 1px 5px 1px 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.dvp-stat-breaktime-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.dvp-stat-breaktime-item:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.dvp-afk-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 11;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.dvp-afk-text {
+  font-size: clamp(0.7rem, 1.4vw, 1.25rem);
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: clamp(0.06rem, 0.15vw, 0.15rem);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  animation: dvp-afk-bob 2s ease-in-out infinite;
+}
+
+@keyframes dvp-afk-bob {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.dvp-portrait-wrapper.dvp-afk .dvp-portrait-image {
+  filter: grayscale(0.6) brightness(0.7);
+  transition: filter 0.3s ease;
+}
+
+.dvp-portrait-wrapper.dvp-afk .dvp-portrait-name {
+  opacity: 0.5;
+}
+
+.dvp-breaktime-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 12;
+  font-size: clamp(0.6rem, 1vw, 0.85rem);
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: dvp-breaktime-steam 2s ease-in-out infinite;
+}
+
+@keyframes dvp-breaktime-steam {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+  50% { transform: translateY(-2px) rotate(5deg); opacity: 1; }
+}
+
+.dvp-portrait-wrapper.dvp-breaktime-away .dvp-portrait-image {
+  filter: grayscale(0.5) brightness(0.8);
+  transition: filter 0.3s ease;
+}
+
+/* ====== Per-portrait volume slider (voice mode) ====== */
+/* Mirrors native div.volume-bar: adjusts the user's audio stream volume
+   (client.users.<id>.volume). Built in _createPortraitElement for remote
+   users; stays visible whenever body.dvp-voice-hud is active. */
+.dvp-volume-bar {
+  display: none;
+  position: absolute;
+  inset: auto 6px 6px 6px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  z-index: 5;
+}
+
+.dvp-volume-bar i {
+  font-size: clamp(0.3rem, 0.5vw, 0.5rem);
+  color: var(--color-text-light-primary, #f0e6d3);
+  opacity: 0.8;
+}
+
+.dvp-volume-bar input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 10px;
+  margin: 0;
+  accent-color: var(--user-color, #3ba55d);
+  cursor: pointer;
+}
+
+body.dvp-voice-hud .dvp-volume-bar {
+  display: flex;
+}
+
+/* ====== Settings shortcut in the stats widget ====== */
+.dvp-stat-gear-item {
+  color: var(--ss-color-text-secondary);
+}
+
+.dvp-stat-gear-item:hover {
+  color: var(--ss-accent);
+}
+
+/* ====== Hide vanilla active players list ====== */
+/* Portraits replace the active players list. The body.dvp-active gate is added
+   during the init hook (player-portraits.mjs) before UI render so the list
+   never flashes on load, and removed on panel destroy(). The #players app
+   itself remains in its native ui-left column. */
+body.dvp-active #players-active.flexcol {
+  display: none !important;
+}
+
+/* ====== Live camera video feed in place of portrait ====== */
+/* voice-mode.mjs projects the user's MediaStream into .dvp-portrait-video
+   while broadcasting video (dvp-camera-live on the wrapper). The cloned video
+   element is always muted — audio continues playing from the native dock video. */
+.dvp-portrait-video {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 3;
+  background: #000;
+}
+
+.dvp-portrait-wrapper.dvp-camera-live .dvp-portrait-video {
+  display: block;
+}
+
+.dvp-portrait-wrapper.dvp-camera-live .dvp-portrait-image {
+  visibility: hidden;
+}

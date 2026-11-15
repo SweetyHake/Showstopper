@@ -1,0 +1,56 @@
+<div class="effect-settings-form">
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      {{localize "showstopper.Settings.Fieldset.Main"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.Settings.Enabled.Name"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="enabled" {{checked enabled}}>
+      </div>
+      <p class="field-hint">{{localize "showstopper.Settings.Enabled.Hint"}}</p>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.Settings.PortraitSize.Name"}}</label>
+      <div class="form-fields">
+        <select name="portraitSize">
+          {{selectOptions sizeOptions selected=portraitSize}}
+        </select>
+      </div>
+      <p class="field-hint">{{localize "showstopper.Settings.PortraitSize.Hint"}}</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-eye" aria-hidden="true"></i>
+      {{localize "showstopper.Settings.Fieldset.Display"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.Settings.ShowStats.Name"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="showStats" {{checked showStats}}>
+      </div>
+      <p class="field-hint">{{localize "showstopper.Settings.ShowStats.Hint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.Settings.SpeakingShake.Name"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="speakingShake" {{checked speakingShake}}>
+      </div>
+      <p class="field-hint">{{localize "showstopper.Settings.SpeakingShake.Hint"}}</p>
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="submit" class="form-btn btn-primary">
+      <i class="fas fa-save" aria-hidden="true"></i>
+      {{localize "showstopper.Settings.Save"}}
+    </button>
+  </footer>
+</div>

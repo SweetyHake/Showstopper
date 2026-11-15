@@ -1,0 +1,149 @@
+/* ====== Native Foundry Voice Mode (Portrait Panel) ====== */
+/* Enabled by body.dvp-voice-hud (VoiceModeController): the #camera-views dock
+   is hidden ENTIRELY, and its native control buttons (div.user-controls,
+   the "controls" part of CameraViews) are reparented into the module's custom
+   stats widget next to ping (span.dvp-voice-controls). Node reparenting is
+   handled by VoiceModeController.syncControls(); clicks are forwarded to
+   core's action dispatcher. */
+
+body.dvp-voice-hud #camera-views {
+  display: none !important;
+}
+
+/* Control button host inside the stats widget (after ping/FPS). */
+.dvp-voice-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.125rem, 0.25vw, 0.25rem);
+  /* The stats widget itself has pointer-events: none — buttons need click events. */
+  pointer-events: auto;
+}
+
+/* Hide empty host (when voice mode is off or controls haven't mounted yet). */
+.dvp-voice-controls:empty {
+  display: none;
+}
+
+/* Show separator before the button block only when the host is non-empty. */
+.dvp-voice-controls-sep {
+  display: none;
+}
+.dvp-voice-controls-sep:has(+ .dvp-voice-controls:not(:empty)) {
+  display: block;
+}
+
+/* Native button bar inside the host: strip pill chrome and keep a flat row. */
+.dvp-voice-controls .user-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(0.125rem, 0.25vw, 0.25rem);
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+/* Buttons match .dvp-stat-gear-item: compact sand-colored icon at
+   opacity 0.7; hover changes color only (no background or border chrome). */
+.dvp-voice-controls .av-control.inline-control {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  font-size: clamp(0.3rem, 0.5vw, 0.5rem);
+  color: var(--ss-color-text-secondary);
+  opacity: 0.7;
+  transition: color 0.15s ease;
+}
+
+.dvp-voice-controls .av-control.inline-control:hover {
+  color: var(--ss-accent);
+}
+
+/* Muted/deafened states (mic-slash / deafen) render in red, including hover. */
+.dvp-voice-controls .av-control.inline-control.fa-microphone-slash,
+.dvp-voice-controls .av-control.inline-control.fa-volume-mute,
+.dvp-voice-controls .av-control.inline-control.fa-microphone-slash:hover,
+.dvp-voice-controls .av-control.inline-control.fa-volume-mute:hover {
+  color: var(--color-level-error, #e93a3a);
+}
+
+/* Dock collapse toggle is meaningless in this mode since the dock is hidden. */
+.dvp-voice-controls [data-action="toggleDock"] {
+  display: none;
+}
+
+/* Standalone pill host occupying the stats widget spot when stats display
+   is disabled (showStats off) while voice mode is active. */
+.dvp-voice-controls--standalone {
+  position: absolute;
+  left: var(--dvp-offset-x);
+  bottom: 8px;
+  padding: clamp(0.125rem, 0.25vw, 0.25rem) clamp(0.25rem, 0.5vw, 0.5rem);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  backdrop-filter: blur(4px);
+}
+
+/* ====== LiveKit Connection Quality (Portrait Panel) ====== */
+/* Mirrors the dock's native .connection-quality-indicator (hidden along with
+   #camera-views). Driven by panel.nativeQuality via data-quality:
+   LiveKit client + displayConnectionQuality setting (VoiceModeController).
+   Placed in the TOP-RIGHT corner: mute badge sits bottom-right, deafen
+   bottom-left, and the volume slider spans the bottom edge. */
+.dvp-quality-dot {
+  position: absolute;
+  top: clamp(0.125rem, 0.25vw, 0.25rem);
+  right: clamp(0.125rem, 0.25vw, 0.25rem);
+  width: clamp(0.5rem, 0.9vw, 0.875rem);
+  height: clamp(0.5rem, 0.9vw, 0.875rem);
+  border-radius: 50%;
+  border: 1px solid #1a1a1a;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.dvp-quality-dot[data-quality="excellent"] {
+  opacity: 1;
+  transform: scale(1);
+  background-color: #3ecf5e;
+}
+
+.dvp-quality-dot[data-quality="good"] {
+  opacity: 1;
+  transform: scale(1);
+  background-color: #e8c93f;
+}
+
+.dvp-quality-dot[data-quality="poor"] {
+  opacity: 1;
+  transform: scale(1);
+  background-color: #e05252;
+}
+
+/* Lost connection pulses so it's unmistakable even without a tooltip. */
+.dvp-quality-dot[data-quality="lost"] {
+  opacity: 1;
+  transform: scale(1);
+  background-color: #9a9a9a;
+  animation: dvp-quality-lost 1.2s ease-in-out infinite;
+}
+
+.dvp-quality-dot[data-quality="unknown"] {
+  opacity: 1;
+  transform: scale(1);
+  background-color: #f0f0e0;
+}
+
+@keyframes dvp-quality-lost {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

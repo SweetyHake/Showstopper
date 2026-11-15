@@ -1,0 +1,111 @@
+<form class="effect-settings-form actor-intro-config-form" autocomplete="off">
+  <div class="hint-text">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>{{labels.defaultHint}}</span>
+  </div>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fa-solid fa-clapperboard" aria-hidden="true"></i>
+      {{labels.sectionStyle}}
+    </legend>
+
+    <div class="form-group">
+      <label>{{labels.introEffect}}</label>
+      <div class="form-fields portrait-field">
+        <select name="introEffectId">
+          <option value="">{{labels.introEffectAuto}}</option>
+          {{#each introEffects}}
+          <option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>
+          {{/each}}
+        </select>
+        <button type="button" class="icon-btn" data-action="previewIntro" data-tooltip="{{labels.preview}}">
+          <i class="fa-solid fa-eye" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{labels.portrait}}</label>
+      <div class="form-fields image-field portrait-field">
+        <input type="text" name="portrait" value="{{portrait}}" placeholder="{{defaults.portrait}}">
+        <button type="button" class="icon-btn" data-action="browsePortrait" data-tooltip="{{labels.browse}}">
+          <i class="fa-solid fa-file-image" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="portrait-preview-section">
+      <div class="portrait-preview-container">
+        <div class="portrait-preview-frame">
+          <img src="{{portraitPreviewSrc}}" class="portrait-preview-img" alt="{{labels.portrait}}">
+        </div>
+      </div>
+
+      <div class="portrait-preview-controls">
+        <div class="form-group">
+          <label>{{labels.portraitOffsetX}}</label>
+          <div class="form-fields range-field">
+            <input type="range" name="portraitOffsetX" min="-50" max="50" step="1" value="{{portraitOffsetX}}">
+            <span class="field-value range-value">{{portraitOffsetX}}%</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>{{labels.portraitOffsetY}}</label>
+          <div class="form-fields range-field">
+            <input type="range" name="portraitOffsetY" min="-50" max="50" step="1" value="{{portraitOffsetY}}">
+            <span class="field-value range-value">{{portraitOffsetY}}%</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>{{labels.portraitScale}}</label>
+          <div class="form-fields range-field">
+            <input type="range" name="portraitScale" min="0.25" max="4" step="0.05" value="{{portraitScale}}">
+            <span class="field-value range-value">{{portraitScale}}x</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fa-solid fa-pen-nib" aria-hidden="true"></i>
+      {{labels.sectionText}}
+    </legend>
+
+    <div class="form-group">
+      <label>{{labels.displayName}}</label>
+      <div class="form-fields">
+        <input type="text" name="displayName" value="{{displayName}}" placeholder="{{defaults.displayName}}">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{labels.title}}</label>
+      <div class="form-fields">
+        <input type="text" name="title" value="{{title}}" placeholder="{{defaults.title}}">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{labels.description}}</label>
+      <div class="form-fields">
+        <textarea name="description" rows="4" placeholder="{{defaults.description}}">{{description}}</textarea>
+      </div>
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="button" class="form-btn btn-secondary" data-action="reset">
+      <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+      {{labels.reset}}
+    </button>
+    <button type="button" class="form-btn btn-primary" data-action="save">
+      <i class="fa-solid fa-save" aria-hidden="true"></i>
+      {{labels.save}}
+    </button>
+  </footer>
+</form>

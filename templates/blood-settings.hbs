@@ -1,0 +1,57 @@
+<div class="effect-settings-form">
+    {{#each sections as |section|}}
+    <fieldset class="settings-fieldset">
+        <legend>
+            <i class="{{section.icon}}" aria-hidden="true"></i>
+            {{section.title}}
+        </legend>
+        {{#each section.fields as |f|}}
+        <div class="form-group" {{#if (eq f.type "checkbox")}}data-field-type="checkbox"{{/if}}>
+            <label for="ss-blood-{{f.key}}">{{f.label}}</label>
+            {{#if (eq f.type "checkbox")}}
+            <div class="form-fields">
+                <input type="checkbox" name="{{f.key}}" id="ss-blood-{{f.key}}" {{checked f.value}}>
+            </div>
+            {{else if (eq f.type "select")}}
+            <div class="form-fields">
+                <select name="{{f.key}}" id="ss-blood-{{f.key}}">
+                    {{#each f.choices as |label value|}}
+                    <option value="{{value}}" {{#if (eq ../f.value value)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            {{else if (eq f.type "range")}}
+            <div class="form-fields range-field">
+                <input type="range" name="{{f.key}}" id="ss-blood-{{f.key}}" min="{{f.min}}" max="{{f.max}}" step="{{f.step}}" value="{{f.value}}">
+                <span class="field-value" data-preview="{{f.key}}">{{f.value}}</span>
+            </div>
+            {{else if (eq f.type "color")}}
+            <div class="form-fields color-field">
+                <input type="color" data-swatch="color" value="{{f.rgb}}">
+                <input type="text" class="color-hex color-hex--alpha" name="{{f.key}}" id="ss-blood-{{f.key}}" value="{{f.value}}" placeholder="#a51414d8">
+            </div>
+            {{else}}
+            <div class="form-fields">
+                <input type="text" name="{{f.key}}" id="ss-blood-{{f.key}}" value="{{f.value}}">
+            </div>
+            {{/if}}
+            <p class="field-hint">{{f.hint}}</p>
+        </div>
+        {{/each}}
+    </fieldset>
+    {{/each}}
+    <footer class="form-footer">
+        <button type="button" class="form-btn btn-secondary" data-act="test" data-tooltip="{{testHint}}">
+            <i class="fas fa-vial" aria-hidden="true"></i>
+            <span>{{testLabel}}</span>
+        </button>
+        <button type="button" class="form-btn btn-secondary btn-danger-hover" data-act="clear">
+            <i class="fas fa-broom" aria-hidden="true"></i>
+            <span>{{clearLabel}}</span>
+        </button>
+        <button type="submit" class="form-btn btn-primary">
+            <i class="fas fa-save" aria-hidden="true"></i>
+            <span>{{saveLabel}}</span>
+        </button>
+    </footer>
+</div>

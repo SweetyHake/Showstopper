@@ -1,0 +1,46 @@
+<div class="effect-settings-form">
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      {{localize "showstopper.SmoothCamera.SectionGeneral"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.SmoothCamera.Enable"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="enabled" {{#if enabled}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.SmoothCamera.Enabled.Hint"}}</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-gauge-high" aria-hidden="true"></i>
+      {{localize "showstopper.SmoothCamera.SectionSpeed"}}
+    </legend>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.SmoothCamera.PanSpeed"}}</label>
+      <div class="form-fields range-field sst-field-pair">
+        <input type="range" name="panSpeed" value="{{panSpeed}}" min="0.1" max="20" step="0.1" />
+        <input type="number" value="{{panSpeed}}" min="0.1" max="20" step="0.1" class="range-num sst-range-num" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.SmoothCamera.ZoomSpeed"}}</label>
+      <div class="form-fields range-field sst-field-pair">
+        <input type="range" name="zoomSpeed" value="{{zoomSpeed}}" min="0.1" max="10" step="0.1" />
+        <input type="number" value="{{zoomSpeed}}" min="0.1" max="10" step="0.1" class="range-num sst-range-num" />
+      </div>
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="submit" class="form-btn btn-primary">
+      <i class="fas fa-save" aria-hidden="true"></i>
+      {{localize "showstopper.SmoothCamera.Save"}}
+    </button>
+  </footer>
+</div>

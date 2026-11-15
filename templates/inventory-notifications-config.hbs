@@ -1,0 +1,70 @@
+<div class="effect-settings-form">
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      {{localize "showstopper.InventoryNotifications.SectionGeneral"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.InventoryNotifications.SettingName"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="notificationsEnabled" {{#if notificationsEnabled}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.InventoryNotifications.SettingHint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.InventoryNotifications.ColorizeEnabled"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="colorizeEnabled" {{#if colorizeEnabled}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.InventoryNotifications.ColorizeEnabledHint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.InventoryNotifications.ColorizeTooltipEnabled"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="colorizeTooltipEnabled" {{#if colorizeTooltipEnabled}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.InventoryNotifications.ColorizeTooltipEnabledHint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.InventoryNotifications.BackgroundGradientEnabled"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="backgroundGradientEnabled" {{#if backgroundGradientEnabled}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.InventoryNotifications.BackgroundGradientEnabledHint"}}</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-palette" aria-hidden="true"></i>
+      {{localize "showstopper.InventoryNotifications.RarityColors"}}
+    </legend>
+    <p class="section-intro-hint">{{localize "showstopper.InventoryNotifications.RarityColorsHint"}}</p>
+
+    <div class="settings-color-grid">
+      {{#each rarities}}
+        <div class="form-group sst-color-pair">
+          <label>{{label}}</label>
+          <div class="form-fields color-field">
+            <input type="color" value="{{color}}" />
+            <input type="text" class="color-hex" name="color.{{key}}" value="{{color}}" maxlength="7" />
+            <button type="button" class="icon-btn" data-action="reset-color" data-default="{{default}}" title="{{localize "showstopper.InventoryNotifications.ResetColor"}}">
+              <i class="fas fa-rotate-left" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="submit" class="form-btn btn-primary">
+      <i class="fas fa-save" aria-hidden="true"></i>
+      {{localize "showstopper.InventoryNotifications.Save"}}
+    </button>
+  </footer>
+</div>

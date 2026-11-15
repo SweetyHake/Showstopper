@@ -1,0 +1,39 @@
+name: smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # TS sources (scripts/*.mts|ts) compile into adjacent .mjs/.js files
+      - name: Install dev deps
+        run: npm ci
+      - name: Build (tsc)
+        run: npm run build
+      # Blood determinism checks (RNG, store, renderer, particles, footprints, snow, undo)
+      - name: Blood smoke
+        run: node scripts/blood/_smoke.mjs .
+      # Finisher choreographies against Pixi/canvas/game stubs
+      - name: Finisher smoke
+        run: node scripts/cut-ins/finishers/_smoke.mjs .
+      # Syntax check of built output (what Foundry actually loads)
+      - name: Syntax check
+        run: |
+          fail=0
+          dirs=(scripts)
+          [ -d plus/scripts ] && dirs+=(plus/scripts)
+          while IFS= read -r f; do
+            node --check "$f" || fail=1
+          done < <(find "${dirs[@]}" \( -name '*.mjs' -o -name '*.js' \))
+          exit $fail
+      # Choreography JB2A paths against installed database (skipped if unavailable)
+      - name: JB2A paths check
+        run: node scripts/cut-ins/finishers/_jb2a-check.mjs .

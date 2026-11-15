@@ -1,0 +1,78 @@
+<div class="effect-settings-form">
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-person-running"></i>
+      {{localize "showstopper.tokenMovement.SectionMovement"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.tokenMovement.WalkLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="walk" {{#if walk}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.WalkHint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.tokenMovement.JumpLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="jump" {{#if jump}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.JumpHint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.tokenMovement.FlyLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="fly" {{#if fly}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.FlyHint"}}</p>
+    </div>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.tokenMovement.FallLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="fall" {{#if fall}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.FallHint"}}</p>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-layer-group"></i>
+      {{localize "showstopper.tokenMovement.SectionVertical"}}
+    </legend>
+
+    <div class="form-group" data-field-type="checkbox">
+      <label>{{localize "showstopper.tokenMovement.VerticalLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="vertical" {{#if vertical}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.VerticalHint"}}</p>
+    </div>
+
+    <div class="form-group is-sub-field {{#unless vertical}}is-sub-disabled{{/unless}}" data-field-type="checkbox" data-vertical-sub="true">
+      <label>{{localize "showstopper.tokenMovement.BlurLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="verticalBlur" {{#if verticalBlur}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.BlurHint"}}</p>
+    </div>
+
+    <div class="form-group is-sub-field {{#unless vertical}}is-sub-disabled{{/unless}}" data-field-type="checkbox" data-vertical-sub="true">
+      <label>{{localize "showstopper.tokenMovement.CameraZoomLabel"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="verticalCameraZoom" {{#if verticalCameraZoom}}checked{{/if}} />
+      </div>
+      <p class="field-hint">{{localize "showstopper.tokenMovement.CameraZoomHint"}}</p>
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="submit" class="form-btn btn-primary">
+      <i class="fas fa-save"></i>
+      {{localize "showstopper.tokenMovement.Save"}}
+    </button>
+  </footer>
+</div>

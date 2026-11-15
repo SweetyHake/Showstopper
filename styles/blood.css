@@ -1,0 +1,582 @@
+/* ====== Showstopper — Blood System (Track Brush, HUD, settings window, token color field) ======
+   NO local palette here: all colors, spacing, and radii use shared --ss-* tokens
+   from styles/app/_variables.css (dark + light themes defined there). Blood-specific
+   tokens (--ss-blood-paint, --ss-danger-bg) live in the shared token file as well. */
+
+/* ====== brush cursor ring ====== */
+
+#board.ss-blood-brush-active {
+  cursor: none !important;
+}
+
+.ss-blood-brush-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 55;
+  pointer-events: none;
+  border: 1px dashed var(--ss-blood-paint);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--ss-shadow-25), inset 0 0 0 1px var(--ss-shadow-25);
+}
+
+.ss-blood-brush-ring--erase {
+  border-color: var(--ss-color-error);
+  border-style: solid;
+}
+
+.ss-blood-brush-ring--snow {
+  border-color: var(--ss-snow-ring);
+  border-width: 1.5px;
+  box-shadow: 0 0 0 1.5px var(--ss-snow-ring-halo), inset 0 0 0 1px var(--ss-snow-ring-halo);
+}
+
+/* Elevation/brush-size readout (Q/E, [ ]) — briefly pops up beneath the cursor ring */
+.ss-blood-brush-ring .ss-blood-brush-elev {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border: 1px solid var(--ss-accent);
+  border-radius: var(--ss-radius-sm);
+  background: var(--ss-bg-primary);
+  color: var(--ss-color-text-emphatic);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.ss-blood-brush-ring .ss-blood-brush-elev.show {
+  opacity: 1;
+}
+
+/* ====== Trail Brush HUD (Showstopper / cs-hero-box / fameosity design system) ====== */
+
+.ss-blood-hud {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 60;
+  width: 248px;
+  display: flex;
+  flex-direction: column;
+  background: var(--ss-bg-primary);
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-lg);
+  box-shadow: var(--ss-shadow-elevated);
+  color: var(--ss-color-text-emphatic);
+  font-size: var(--ss-font-size-sm);
+  line-height: var(--ss-line-height);
+  overflow: hidden;
+}
+
+/* ------ 1. Header matching .showstopper-app .window-header ------ */
+
+.ss-blood-hud__header {
+  position: relative;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 5px 0 8px;
+  background: var(--ss-bg-primary);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ss-blood-hud__header.is-dragging,
+.ss-blood-hud__header:active {
+  cursor: grabbing;
+}
+
+/* Icon-only drag handle + brush badge on left */
+.ss-blood-hud__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ss-color-gold);
+  font-size: var(--ss-font-size-xs);
+}
+
+.ss-blood-hud__grip {
+  color: var(--ss-color-text-subtle);
+  font-size: 0.6875rem;
+}
+
+.ss-blood-hud__header-actions {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ss-blood-hud__ctrl-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ss-radius-sm);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-2xs);
+  cursor: pointer;
+  transition: color var(--ss-transition-fast) ease, background var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__ctrl-btn:hover {
+  color: var(--ss-color-text-emphatic);
+  background: var(--ss-color-surface-hover);
+}
+
+/* ------ 2. Panel body ------ */
+
+.ss-blood-hud__body {
+  padding: 7px 8px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-top: 1px solid var(--ss-color-border-soft);
+}
+
+/* --- 2a. Icon-only mode toolbar: Blood | (Snow) | Eraser --- */
+
+.ss-blood-hud__modes {
+  display: flex;
+  gap: 4px;
+}
+
+.ss-blood-hud__mode-btn {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  min-height: 28px;
+  min-block-size: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ss-color-surface);
+  border: 1px solid var(--ss-color-border-soft);
+  border-radius: var(--ss-radius-md);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-sm);
+  cursor: pointer;
+  transition: color var(--ss-transition-fast) ease, border-color var(--ss-transition-fast) ease, background var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__mode-btn:hover {
+  background: var(--ss-color-surface-hover);
+  border-color: var(--ss-color-border);
+  color: var(--ss-color-text-emphatic);
+}
+
+.ss-blood-hud__mode-btn[aria-pressed='true'] {
+  color: var(--ss-accent);
+  border-color: var(--ss-accent);
+  background: var(--ss-color-surface-active);
+}
+
+.ss-blood-hud__mode-btn--erase[aria-pressed='true'] {
+  color: var(--ss-color-error);
+  border-color: var(--ss-color-error);
+  background: var(--ss-danger-bg);
+}
+
+/* --- 2b. Contextual Snow depth strip (Plus only: + auto, 1..5) --- */
+
+.ss-blood-hud__snow-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+
+.ss-blood-hud__snow-btn {
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  min-inline-size: 26px;
+  min-block-size: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ss-color-surface);
+  border: 1px solid var(--ss-color-border-soft);
+  border-radius: var(--ss-radius-md);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color var(--ss-transition-fast) ease, border-color var(--ss-transition-fast) ease, background var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__snow-btn:hover {
+  background: var(--ss-color-surface-hover);
+  border-color: var(--ss-color-border);
+  color: var(--ss-color-text-emphatic);
+}
+
+.ss-blood-hud__snow-btn[aria-pressed='true'] {
+  color: var(--ss-accent);
+  border-color: var(--ss-accent);
+  background: var(--ss-color-surface-active);
+  font-weight: 600;
+}
+
+/* --- 2c. Flat sliders with manual numeric inputs --- */
+
+.ss-blood-hud__sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ss-blood-hud__param-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  transition: opacity var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__param-row.is-muted {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.ss-blood-hud__param-label {
+  width: 18px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-xs);
+  cursor: pointer;
+}
+
+.ss-blood-hud__range {
+  flex: 1;
+  min-width: 0;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.ss-blood-hud__range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-blood-hud__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-block-start: calc((6px - 14px) / 2);
+  background: var(--ss-accent);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.ss-blood-hud__range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.ss-blood-hud__range::-moz-range-track {
+  height: 6px;
+  background: var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-blood-hud__range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--ss-accent);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ss-blood-hud__num-wrap {
+  width: 46px;
+  height: 22px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+  background: var(--ss-bg-tertiary);
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  transition: border-color var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__num-wrap:focus-within {
+  border-color: var(--ss-accent);
+}
+
+.ss-blood-hud__num {
+  width: 100%;
+  min-width: 0;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ss-color-text-emphatic);
+  font-size: var(--ss-font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ss-blood-hud__num::-webkit-outer-spin-button,
+.ss-blood-hud__num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ss-blood-hud__num:focus,
+.ss-blood-hud__num:focus-visible {
+  outline: none;
+}
+
+.ss-blood-hud__num-unit {
+  color: var(--ss-color-text-subtle);
+  font-size: var(--ss-font-size-xs);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* --- 2d. Single compact bottom utility bar --- */
+
+.ss-blood-hud__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 7px;
+  border-top: 1px solid var(--ss-color-border-soft);
+  min-height: 26px;
+}
+
+.ss-blood-hud__bar-left,
+.ss-blood-hud__bar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ss-blood-hud__bar-right {
+  flex-shrink: 0;
+}
+
+.ss-blood-hud__palette {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: opacity var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__palette.is-muted {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.ss-blood-hud__color-pick {
+  width: 26px;
+  height: 26px;
+  min-width: 0;
+  min-height: 0;
+  min-inline-size: 0;
+  min-block-size: 0;
+  padding: 2px;
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  background: var(--ss-bg-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ss-blood-hud__color-pick::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.ss-blood-hud__color-pick::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--ss-radius-sm);
+}
+
+.ss-blood-hud__swatch {
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  min-inline-size: 0;
+  min-block-size: 0;
+  padding: 0;
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.ss-blood-hud__swatch:hover {
+  transform: scale(1.12);
+}
+
+.ss-blood-hud__swatch[aria-pressed='true'] {
+  border-color: var(--ss-accent);
+  box-shadow: 0 0 0 1px var(--ss-accent);
+}
+
+.ss-blood-hud__icon-btn {
+  min-width: 26px;
+  min-height: 26px;
+  min-inline-size: 26px;
+  min-block-size: 26px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--ss-bg-tertiary);
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  color: var(--ss-color-text-secondary);
+  font-size: var(--ss-font-size-2xs);
+  cursor: pointer;
+  transition: color var(--ss-transition-fast) ease, border-color var(--ss-transition-fast) ease, background var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__icon-btn:hover {
+  color: var(--ss-color-text-emphatic);
+  background: var(--ss-color-surface-hover);
+}
+
+.ss-blood-hud__icon-btn[aria-pressed='true'] {
+  color: var(--ss-accent);
+  border-color: var(--ss-accent);
+  background: var(--ss-color-surface-active);
+}
+
+.ss-blood-hud__icon-btn.is-muted {
+  opacity: 0.45;
+}
+
+.ss-blood-hud__icon-btn--danger:hover {
+  color: var(--ss-color-error);
+  border-color: var(--ss-color-error);
+  background: var(--ss-danger-bg);
+}
+
+.ss-blood-hud__elev-wrap {
+  height: 26px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--ss-bg-tertiary);
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  transition: border-color var(--ss-transition-fast) ease;
+}
+
+.ss-blood-hud__elev-wrap:focus-within {
+  border-color: var(--ss-accent);
+}
+
+.ss-blood-hud__elev-wrap.active {
+  border-color: var(--ss-accent);
+  background: var(--ss-color-surface-active);
+}
+
+.ss-blood-hud__elev-prefix {
+  color: var(--ss-color-text-subtle);
+  font-size: 0.6875rem;
+}
+
+.ss-blood-hud__elev-wrap.active .ss-blood-hud__elev-prefix {
+  color: var(--ss-accent);
+}
+
+.ss-blood-hud__elev {
+  width: 28px;
+  height: 20px;
+  padding: 0 1px;
+  border: none;
+  background: transparent;
+  color: var(--ss-color-text-emphatic);
+  font-size: var(--ss-font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ss-blood-hud__elev::-webkit-outer-spin-button,
+.ss-blood-hud__elev::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ss-blood-hud__elev:focus,
+.ss-blood-hud__elev:focus-visible {
+  outline: none;
+}
+
+/* Keyboard focus ring — orange accent matching all interactive controls */
+.ss-blood-hud button:focus-visible,
+.ss-blood-hud input:focus-visible {
+  outline: 1px solid var(--ss-accent);
+  outline-offset: 1px;
+}
+
+/* Prevent double outline inside styled numeric field wrappers */
+.ss-blood-hud input.ss-blood-hud__num:focus-visible,
+.ss-blood-hud input.ss-blood-hud__elev:focus-visible {
+  outline: none;
+}
+
+/* ====== Blood color field in token config ====== */
+
+.ss-blood-token-color input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.ss-blood-token-color input[type='color'] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-sm);
+  background: var(--ss-bg-tertiary);
+  cursor: pointer;
+}

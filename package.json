@@ -1,0 +1,25 @@
+{
+  "name": "showstopper",
+  "version": "14.4.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Showstopper — cinematic presentations, finishers, dynamic blood, portraits, and combat effects for Foundry VTT v14.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "smoke:blood": "node scripts/blood/_smoke.mjs .",
+    "smoke:finishers": "node scripts/cut-ins/finishers/_smoke.mjs .",
+    "smoke:stats": "node scripts/stat-tracker/_smoke.mjs",
+    "stress:blood": "node scripts/blood/_stress.mjs .",
+    "bench:blood": "node scripts/blood/_bench.mjs .",
+    "check:jb2a": "node scripts/cut-ins/finishers/_jb2a-check.mjs .",
+    "pack": "tsc && python tools/pack-release.py",
+    "test": "tsc && node scripts/blood/_smoke.mjs . && node scripts/cut-ins/finishers/_smoke.mjs . && node scripts/stat-tracker/_smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "acorn": "^8.19.0",
+    "typescript": "5.9"
+  }
+}

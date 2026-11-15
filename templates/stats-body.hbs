@@ -1,0 +1,427 @@
+<div class="ss-st-body">
+  {{#unless hasAnyStats}}
+    <div class="ss-st-empty">
+      <i class="fa-solid fa-dice-d20 ss-st-empty__icon" aria-hidden="true"></i>
+      <p>{{localize "showstopper.Stats.NoData"}}</p>
+    </div>
+  {{else}}
+    <section id="ss-st-panel-overview"
+             class="ss-st-panel"
+             role="tabpanel"
+             aria-labelledby="ss-st-tab-overview"
+             data-tab-panel="overview"
+             {{#unless isTabOverview}}hidden{{/unless}}>
+      {{#unless overviewRows.length}}
+        <div class="ss-st-empty">
+          <i class="fa-solid fa-filter-circle-xmark ss-st-empty__icon" aria-hidden="true"></i>
+          <p>{{localize "showstopper.Stats.NoFilterMatches"}}</p>
+        </div>
+      {{else}}
+        <div class="ss-st-kpis">
+          {{#each summaryCards as |card|}}
+            <div class="ss-st-kpi ss-st-kpi--{{card.tone}}">
+              <div class="ss-st-kpi__head">
+                <i class="{{card.icon}}" aria-hidden="true"></i>
+                <span>{{card.label}}</span>
+              </div>
+              <div class="ss-st-kpi__value" {{#if card.tooltip}}data-tooltip="{{card.tooltip}}"{{/if}}>{{card.value}}</div>
+              {{#if card.sub}}
+                <div class="ss-st-kpi__sub">{{card.sub}}</div>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+
+        <div class="ss-st-sr-only" role="status" aria-live="polite" data-sort-status></div>
+
+        <div class="ss-st-overview-scroll" role="region" aria-label="{{localize 'showstopper.Stats.Overview'}}" tabindex="0">
+          <table class="ss-st-table ss-st-table--sortable">
+            <thead>
+              <tr>
+                {{#each overviewCols as |col|}}
+                  <th scope="col"
+                      class="{{col.alignClass}}"
+                      data-col-idx="{{col.idx}}"
+                      {{#if col.ariaSort}}aria-sort="{{col.ariaSort}}"{{/if}}>
+                    <button type="button"
+                            class="ss-st-sort-btn"
+                            data-action="sortTable"
+                            data-sort-key="{{col.key}}"
+                            data-sort-type="{{col.type}}">
+                      <span>{{col.label}}</span>
+                      <i class="fa-solid {{col.icon}} ss-st-sort-icon" aria-hidden="true"></i>
+                    </button>
+                  </th>
+                {{/each}}
+              </tr>
+            </thead>
+            <tbody>
+              {{#each overviewRows as |row|}}
+                <tr class="ss-st-overview-row" data-char-row="{{row.id}}">
+                  <td class="ss-st-cell-char" data-value="{{row.name}}">
+                    <button type="button" class="ss-st-char-link" data-action="selectChar" data-char="{{row.id}}">
+                      <img class="ss-st-avatar" src="{{row.portrait}}" alt="" loading="lazy">
+                      <span class="ss-st-char-link__name">{{row.name}}</span>
+                      {{#unless row.isPC}}
+                        <span class="ss-st-badge ss-st-badge--npc">{{localize "showstopper.Stats.NpcBadge"}}</span>
+                      {{/unless}}
+                    </button>
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.atkRaw}}" {{#if row.atkTip}}data-tooltip="{{row.atkTip}}"{{/if}}>
+                    {{#if row.atkRaw}}{{row.atkFmt}}{{else}}<span class="ss-st-zero">0</span>{{/if}}
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.critsRaw}}">
+                    {{#if row.hasCrits}}
+                      <span class="ss-st-hl-crit">{{row.critsFmt}}</span>{{#if row.critsPct}}<span class="ss-st-muted"> ({{row.critsPct}}%)</span>{{/if}}
+                    {{else}}
+                      <span class="ss-st-zero">0</span>
+                    {{/if}}
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.dmgDealtRaw}}" {{#if row.dmgDealtTip}}data-tooltip="{{row.dmgDealtTip}}"{{/if}}>
+                    {{#if row.dmgDealtRaw}}{{row.dmgDealtFmt}}{{else}}<span class="ss-st-zero">0</span>{{/if}}
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.dmgTakenRaw}}" {{#if row.dmgTakenTip}}data-tooltip="{{row.dmgTakenTip}}"{{/if}}>
+                    {{#if row.dmgTakenRaw}}{{row.dmgTakenFmt}}{{else}}<span class="ss-st-zero">0</span>{{/if}}{{#if row.downs}}<span class="ss-st-muted" data-tooltip="{{row.downsTip}}"> ({{row.downs}})</span>{{/if}}
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.healingRaw}}" {{#if row.healingTip}}data-tooltip="{{row.healingTip}}"{{/if}}>
+                    {{#if row.healingRaw}}{{row.healingFmt}}{{else}}<span class="ss-st-zero">0</span>{{/if}}
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.killsRaw}}" {{#if row.killsTip}}data-tooltip="{{row.killsTip}}"{{/if}}>
+                    {{#if row.kills}}<span class="ss-st-hl-emph">{{row.killsFmt}}</span>{{else}}<span class="ss-st-zero">0</span>{{/if}}
+                  </td>
+                  <td class="ss-st-num" data-value="{{row.savesRaw}}" {{#if row.savesTip}}data-tooltip="{{row.savesTip}}"{{/if}}>{{row.savesDisplay}}</td>
+                  <td class="ss-st-num" data-value="{{row.luckRaw}}">
+                    {{#if row.hasLuck}}
+                      <span class="ss-st-luck">
+                        {{#if row.nat20}}<span class="ss-st-pill ss-st-pill--nat20">{{row.nat20}}</span>{{/if}}
+                        {{#if row.nat1}}<span class="ss-st-pill ss-st-pill--nat1">{{row.nat1}}</span>{{/if}}
+                      </span>
+                    {{else}}
+                      <span class="ss-st-muted">&mdash;</span>
+                    {{/if}}
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{/unless}}
+    </section>
+
+    <section id="ss-st-panel-characters"
+             class="ss-st-panel"
+             role="tabpanel"
+             aria-labelledby="ss-st-tab-characters"
+             data-tab-panel="characters"
+             {{#unless isTabCharacters}}hidden{{/unless}}>
+      {{#unless characterList.length}}
+        <div class="ss-st-empty">
+          <i class="fa-solid fa-user-slash ss-st-empty__icon" aria-hidden="true"></i>
+          <p>{{localize "showstopper.Stats.NoFilterMatches"}}</p>
+        </div>
+      {{else}}
+        <div class="ss-st-split">
+          <aside class="ss-st-sidebar">
+            <div class="ss-st-sidebar-list" role="listbox" aria-label="{{localize 'showstopper.Stats.Characters'}}">
+              {{#each characterList as |item|}}
+                <button type="button"
+                        class="ss-st-char-item{{#if item.selected}} active{{/if}}"
+                        data-action="selectChar"
+                        data-char="{{item.id}}"
+                        role="option"
+                        aria-selected="{{#if item.selected}}true{{else}}false{{/if}}">
+                  <img class="ss-st-avatar ss-st-avatar--md" src="{{item.portrait}}" alt="" loading="lazy">
+                  <span class="ss-st-char-item__info">
+                    <span class="ss-st-char-item__top">
+                      <span class="ss-st-char-item__name">{{item.name}}</span>
+                      {{#unless item.isPC}}
+                        <span class="ss-st-badge ss-st-badge--npc">{{localize "showstopper.Stats.NpcBadge"}}</span>
+                      {{/unless}}
+                    </span>
+                    <span class="ss-st-char-item__meta">{{item.metaLine}}</span>
+                  </span>
+                </button>
+              {{/each}}
+            </div>
+          </aside>
+
+          <div class="ss-st-detail-scroll">
+            {{#if detail}}
+              <header class="ss-st-hero">
+                <div class="ss-st-hero__id">
+                  <img class="ss-st-avatar ss-st-avatar--lg" src="{{detail.portrait}}" alt="" loading="lazy">
+                  <div class="ss-st-hero__title">
+                    <div class="ss-st-hero__name-row">
+                      <h3>{{detail.name}}</h3>
+                      {{#if detail.isPC}}
+                        <span class="ss-st-badge ss-st-badge--pc">{{localize "showstopper.Stats.PlayerBadge"}}</span>
+                      {{else}}
+                        <span class="ss-st-badge ss-st-badge--npc">{{localize "showstopper.Stats.NpcBadge"}}</span>
+                      {{/if}}
+                    </div>
+                    {{#if detail.chips.length}}
+                      <div class="ss-st-hero__chips">
+                        {{#each detail.chips as |chip|}}
+                          <span class="ss-st-chip">{{chip}}</span>
+                        {{/each}}
+                      </div>
+                    {{/if}}
+                  </div>
+                </div>
+                <div class="ss-st-hero__actions">
+                  {{#if detail.canOpenSheet}}
+                    <button type="button" class="ss-st-btn" data-action="openSheet" data-char="{{detail.id}}">
+                      <i class="fa-solid fa-id-card-clip" aria-hidden="true"></i>
+                      <span>{{localize "showstopper.Stats.OpenSheet"}}</span>
+                    </button>
+                  {{/if}}
+                  <button type="button" class="ss-st-btn" data-action="exportChar" data-char="{{detail.id}}">
+                    <i class="fa-solid fa-comment-dots" aria-hidden="true"></i>
+                    <span>{{localize "showstopper.Stats.ExportChat"}}</span>
+                  </button>
+                </div>
+              </header>
+
+              <div class="ss-st-stat-groups">
+                {{#each detail.statGroups as |grp|}}
+                  <div class="ss-st-group-card">
+                    <div class="ss-st-group-card__title">
+                      <i class="{{grp.icon}}" aria-hidden="true"></i>
+                      <span>{{grp.title}}</span>
+                    </div>
+                    <dl class="ss-st-kv-list">
+                      {{#each grp.metrics as |m|}}
+                        <div class="ss-st-kv">
+                          <dt>{{m.label}}</dt>
+                          <dd class="{{m.toneClass}}" {{#if m.tooltip}}data-tooltip="{{m.tooltip}}"{{/if}}>{{m.value}}</dd>
+                        </div>
+                      {{/each}}
+                    </dl>
+                  </div>
+                {{/each}}
+              </div>
+
+              {{#if detail.hasBreakdowns}}
+                <div class="ss-st-cards-grid">
+                  {{#if detail.weapons.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> {{detail.labels.weapons}}</h4>
+                      <table class="ss-st-table ss-st-table--compact">
+                        <thead>
+                          <tr>
+                            <th scope="col">{{detail.labels.weapon}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "DND5E.AttackPl"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Crits"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "DND5E.Damage"}}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{#each detail.weapons as |w|}}
+                            <tr>
+                              <td>{{w.name}}</td>
+                              <td class="ss-st-num">{{w.total}}</td>
+                              <td class="ss-st-num">{{w.crits}}</td>
+                              <td class="ss-st-num" {{#if w.dmgTip}}data-tooltip="{{w.dmgTip}}"{{/if}}>{{w.damage}}</td>
+                            </tr>
+                          {{/each}}
+                        </tbody>
+                      </table>
+                    </section>
+                  {{/if}}
+
+                  {{#if detail.spells.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> {{localize "TYPES.Item.spellPl"}}</h4>
+                      <table class="ss-st-table ss-st-table--compact">
+                        <thead>
+                          <tr>
+                            <th scope="col">{{localize "TYPES.Item.spell"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.UsesCount"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "DND5E.Damage"}}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{#each detail.spells as |sp|}}
+                            <tr>
+                              <td>{{sp.name}}</td>
+                              <td class="ss-st-num">{{sp.countDisplay}}</td>
+                              <td class="ss-st-num" {{#if sp.dmgTip}}data-tooltip="{{sp.dmgTip}}"{{/if}}>{{sp.dmgDisplay}}</td>
+                            </tr>
+                          {{/each}}
+                        </tbody>
+                      </table>
+                    </section>
+                  {{/if}}
+
+                  {{#if detail.damageTypes.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-bolt" aria-hidden="true"></i> {{localize "showstopper.Stats.DamageTypes"}}</h4>
+                      <div class="ss-st-bars">
+                        {{#each detail.damageTypes as |dt|}}
+                          <div class="ss-st-bar-row">
+                            <div class="ss-st-bar-row__meta">
+                              <span class="ss-st-bar-row__label">{{dt.label}}</span>
+                              <span class="ss-st-bar-row__val" {{#if dt.valTip}}data-tooltip="{{dt.valTip}}"{{/if}}>{{dt.val}} <span class="ss-st-muted">({{dt.pct}}%)</span></span>
+                            </div>
+                            <div class="ss-st-bar-track">
+                              <div class="ss-st-bar-fill" style="width: {{dt.barWidth}}%; --ss-bar-color: {{dt.color}};"></div>
+                            </div>
+                          </div>
+                        {{/each}}
+                      </div>
+                    </section>
+                  {{/if}}
+
+                  {{#if detail.spellLevels.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-star" aria-hidden="true"></i> {{localize "showstopper.Stats.SpellLevels"}}</h4>
+                      <div class="ss-st-bars">
+                        {{#each detail.spellLevels as |sl|}}
+                          <div class="ss-st-bar-row">
+                            <div class="ss-st-bar-row__meta">
+                              <span class="ss-st-bar-row__label">{{sl.label}}</span>
+                              <span class="ss-st-bar-row__val">{{sl.val}} <span class="ss-st-muted">({{sl.pct}}%)</span></span>
+                            </div>
+                            <div class="ss-st-bar-track">
+                              <div class="ss-st-bar-fill" style="width: {{sl.barWidth}}%; --ss-bar-color: {{sl.color}};"></div>
+                            </div>
+                          </div>
+                        {{/each}}
+                      </div>
+                    </section>
+                  {{/if}}
+
+                  {{#if detail.skills.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-compass" aria-hidden="true"></i> {{localize "DND5E.Skills"}}</h4>
+                      <table class="ss-st-table ss-st-table--compact">
+                        <thead>
+                          <tr>
+                            <th scope="col">{{localize "DND5E.Skill"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Rolls"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Best"}}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{#each detail.skills as |sk|}}
+                            <tr>
+                              <td>{{sk.label}}</td>
+                              <td class="ss-st-num">{{sk.total}}</td>
+                              <td class="ss-st-num">{{sk.best}}</td>
+                            </tr>
+                          {{/each}}
+                        </tbody>
+                      </table>
+                    </section>
+                  {{/if}}
+
+                  {{#if detail.saves.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> {{localize "DND5E.SAVE.Title.other"}}</h4>
+                      <table class="ss-st-table ss-st-table--compact">
+                        <thead>
+                          <tr>
+                            <th scope="col">{{localize "DND5E.Ability"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Rolls"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Success"}}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{#each detail.saves as |sv|}}
+                            <tr>
+                              <td>{{sv.label}}</td>
+                              <td class="ss-st-num">{{sv.total}}</td>
+                              <td class="ss-st-num">{{sv.successDisplay}}</td>
+                            </tr>
+                          {{/each}}
+                        </tbody>
+                      </table>
+                    </section>
+                  {{/if}}
+
+                  {{#if detail.otherChecks.length}}
+                    <section class="ss-st-card">
+                      <h4 class="ss-st-card__title"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> {{localize "showstopper.Stats.Tools"}}</h4>
+                      <table class="ss-st-table ss-st-table--compact">
+                        <thead>
+                          <tr>
+                            <th scope="col">{{localize "DND5E.Roll"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Rolls"}}</th>
+                            <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Best"}}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {{#each detail.otherChecks as |oc|}}
+                            <tr>
+                              <td>{{oc.label}}</td>
+                              <td class="ss-st-num">{{oc.total}}</td>
+                              <td class="ss-st-num">{{oc.best}}</td>
+                            </tr>
+                          {{/each}}
+                        </tbody>
+                      </table>
+                    </section>
+                  {{/if}}
+                </div>
+              {{/if}}
+            {{/if}}
+          </div>
+        </div>
+      {{/unless}}
+    </section>
+
+    <section id="ss-st-panel-log"
+             class="ss-st-panel"
+             role="tabpanel"
+             aria-labelledby="ss-st-tab-log"
+             data-tab-panel="log"
+             {{#unless isTabLog}}hidden{{/unless}}>
+      {{#unless logRows.length}}
+        <div class="ss-st-empty">
+          <i class="fa-solid fa-scroll ss-st-empty__icon" aria-hidden="true"></i>
+          <p>{{localize "showstopper.Stats.NoRecentRolls"}}</p>
+        </div>
+      {{else}}
+        <div class="ss-st-log-scroll" role="region" aria-label="{{localize 'showstopper.Stats.RollLog'}}" tabindex="0">
+          <table class="ss-st-table ss-st-table--log">
+            <thead>
+              <tr>
+                <th scope="col" class="ss-st-col-time">{{localize "showstopper.Stats.Time"}}</th>
+                <th scope="col">{{localize "showstopper.Stats.Character"}}</th>
+                <th scope="col">{{localize "DND5E.Roll"}}</th>
+                <th scope="col" class="ss-st-num">{{localize "showstopper.Stats.Total"}}</th>
+                <th scope="col" class="ss-st-col-outcome">{{localize "showstopper.Stats.Outcome"}}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each logRows as |entry|}}
+                <tr>
+                  <td class="ss-st-col-time ss-st-muted">{{entry.time}}</td>
+                  <td>
+                    <button type="button" class="ss-st-char-link ss-st-char-link--sm" data-action="selectChar" data-char="{{entry.actorId}}">
+                      <img class="ss-st-avatar ss-st-avatar--xs" src="{{entry.portrait}}" alt="" loading="lazy">
+                      <span class="ss-st-char-link__name">{{entry.actorName}}</span>
+                    </button>
+                  </td>
+                  <td class="ss-st-log-roll">
+                    <i class="{{entry.icon}} ss-st-log-cat-icon" data-tooltip="{{entry.catLabel}}" aria-hidden="true"></i>
+                    <span>{{entry.rollLabel}}</span>
+                  </td>
+                  <td class="ss-st-num ss-st-log-total">
+                    <strong>{{entry.totalDisplay}}</strong>
+                    {{#if entry.d20Sub}}<span class="ss-st-muted"> ({{entry.d20Sub}})</span>{{/if}}
+                  </td>
+                  <td class="ss-st-col-outcome">
+                    {{#each entry.badges as |badge|}}
+                      <span class="ss-st-pill ss-st-pill--{{badge.tone}}">{{badge.label}}</span>
+                    {{/each}}
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{/unless}}
+    </section>
+  {{/unless}}
+</div>

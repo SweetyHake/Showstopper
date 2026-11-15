@@ -1,0 +1,8 @@
+node_modules/
+.mig-tmp/
+.wiki-drafts/
+plus/
+AGENTS.md
+showstopper.zip
+showstopper-plus.zip
+*.code-workspace

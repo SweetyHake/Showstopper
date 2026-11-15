@@ -1,0 +1,83 @@
+<div class="effect-settings-form">
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-id-badge" aria-hidden="true"></i>
+      {{localize "showstopper.Portrait.SectionIdentity"}}
+    </legend>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.Portrait.DisplayMode"}}</label>
+      <div class="form-fields dvp-display-mode-group">
+        {{#if hasCharacter}}
+        <label class="dvp-mode-btn {{#if (eq displayMode "character")}}active{{/if}}">
+          <input type="radio" name="displayMode" value="character" {{#if (eq displayMode "character")}}checked{{/if}}>
+          <i class="fas fa-user-shield" aria-hidden="true"></i> {{localize "showstopper.Portrait.ModeCharacter"}}
+        </label>
+        {{/if}}
+        {{#if discordRelayAvailable}}
+        <label class="dvp-mode-btn {{#if (eq displayMode "discord")}}active{{/if}}">
+          <input type="radio" name="displayMode" value="discord" {{#if (eq displayMode "discord")}}checked{{/if}}>
+          <i class="fab fa-discord" aria-hidden="true"></i> Discord
+        </label>
+        {{/if}}
+        <label class="dvp-mode-btn {{#if (eq displayMode "user")}}active{{/if}}">
+          <input type="radio" name="displayMode" value="user" {{#if (eq displayMode "user")}}checked{{/if}}>
+          <i class="fas fa-user" aria-hidden="true"></i> {{localize "showstopper.Portrait.ModeUser"}}
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.Portrait.DisplayName"}}</label>
+      <div class="form-fields">
+        <input type="text" name="customDisplayName" value="{{customDisplayName}}" placeholder="{{defaultDisplayName}}">
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="settings-fieldset">
+    <legend>
+      <i class="fas fa-image" aria-hidden="true"></i>
+      {{localize "showstopper.Portrait.SectionImages"}}
+    </legend>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.Portrait.IdleImage"}}</label>
+      <div class="form-fields">
+        <div class="dvp-image-field">
+          <img src="{{idlePreviewSrc}}" data-target="idleImage" class="dvp-preview">
+          <input type="text" name="idleImage" value="{{idleImage}}" placeholder="{{localize 'showstopper.Portrait.PlaceholderDefault'}}">
+          <button type="button" class="icon-btn dvp-file-picker" data-target="idleImage" title="{{localize 'showstopper.cut-ins.ui.effectSettings.browse'}}">
+            <i class="fas fa-file-import" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="icon-btn dvp-reset-field" data-target="idleImage" title="{{localize 'showstopper.Portrait.ResetImage'}}">
+            <i class="fas fa-rotate-left" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "showstopper.Portrait.SpeakingImage"}}</label>
+      <div class="form-fields">
+        <div class="dvp-image-field">
+          <img src="{{speakingPreviewSrc}}" data-target="speakingImage" class="dvp-preview">
+          <input type="text" name="speakingImage" value="{{speakingImage}}" placeholder="{{localize 'showstopper.Portrait.PlaceholderDefault'}}">
+          <button type="button" class="icon-btn dvp-file-picker" data-target="speakingImage" title="{{localize 'showstopper.cut-ins.ui.effectSettings.browse'}}">
+            <i class="fas fa-file-import" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="icon-btn dvp-reset-field" data-target="speakingImage" title="{{localize 'showstopper.Portrait.ResetImage'}}">
+            <i class="fas fa-rotate-left" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <footer class="form-footer">
+    <button type="submit" class="form-btn btn-primary">
+      <i class="fas fa-save" aria-hidden="true"></i>
+      {{localize "showstopper.Portrait.Save"}}
+    </button>
+  </footer>
+</div>

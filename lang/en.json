@@ -1,0 +1,1649 @@
+{
+  "showstopper": {
+    "cut-ins": {
+      "ui": {
+        "menuTitle": "Showstopper",
+        "selectToken": "Select a token first",
+        "youEncountered": "You encountered...",
+        "clickToContinue": "Click to continue",
+        "clickToClose": "Click to close",
+        "noEffects": "No effects available in this category",
+        "play": "Play",
+        "preview": "Preview",
+        "settings": "Settings",
+        "comingSoon": "Coming soon...",
+        "searchPlaceholder": "Search effects...",
+        "searchNoResults": "Nothing found",
+        "tabs": {
+          "introductions": "Introductions",
+          "openings": "Openings",
+          "endings": "Endings",
+          "finishers": "Finishers"
+        },
+        "dangerLevels": {
+          "harmless": "Harmless",
+          "minor": "Minor Threat",
+          "caution": "Caution",
+          "dangerous": "Dangerous",
+          "lethal": "Lethal",
+          "deadly": "Deadly",
+          "extreme": "Extreme Danger",
+          "doom": "Doom Incarnate"
+        },
+        "preload": {
+          "done": "Preloaded assets for \"{name}\"",
+          "nothing": "Nothing to preload for \"{name}\"",
+          "failed": "Failed to preload effect assets",
+          "inProgress": "Preloading assets ({done}/{total})",
+          "doneBar": "Preload complete"
+        },
+        "config": {
+          "titleFor": "Intro: {name}",
+          "buttonTooltip": "Configure Introduction",
+          "contextMenu": "Configure Introduction",
+          "labels": {
+            "introEffect": "Intro Style",
+            "displayName": "Display Name",
+            "portrait": "Portrait",
+            "portraitOffsetX": "Offset X",
+            "portraitOffsetY": "Offset Y",
+            "portraitScale": "Scale",
+            "title": "Title",
+            "description": "Description"
+          },
+          "introEffectAuto": "Default",
+          "defaultHint": "Empty fields are filled from the character sheet",
+          "noTitleFound": "Auto from biography",
+          "noDescriptionFound": "Auto from biography",
+          "saved": "Introduction settings saved",
+          "sectionStyle": "Style & Portrait",
+          "sectionText": "Texts & Description",
+          "resetConfirmTitle": "Reset Settings?",
+          "resetConfirmContent": "Reset introduction settings for this character to defaults?",
+          "resetDone": "Introduction settings reset"
+        },
+        "effectSettings": {
+          "titleFor": "Effect Settings: {name}",
+          "commonSettings": "Sound",
+          "uniqueSettings": "Effect",
+          "defaultHint": "Leave fields empty to use defaults",
+          "saved": "Effect settings saved",
+          "resetConfirmTitle": "Reset Settings?",
+          "resetConfirmContent": "Reset all settings for this effect to defaults?",
+          "resetDone": "Effect settings reset",
+          "noSoundSelected": "No sound file selected",
+          "soundError": "Failed to play sound",
+          "fields": {
+            "soundPath": "Sound File",
+            "soundPathHint": "Audio file played with the effect",
+            "soundVolume": "Volume"
+          },
+          "save": "Save",
+          "reset": "Reset",
+          "browse": "Browse",
+          "previewSound": "Preview",
+          "gmOnly": "Only the GM can change effect settings",
+          "saveFailed": "Failed to save settings"
+        },
+        "clearSearch": "Clear search"
+      },
+      "introduction": {
+        "jojo": {
+          "name": "Manga Standout",
+          "description": "Dramatic character reveal with threat rating and stats hexagon",
+          "requiresDnd5e": "Requires D&D 5e",
+          "settings": {
+            "showDangerLevel": "Danger Level",
+            "showDangerLevelHint": "Threat indicator based on CR",
+            "showStats": "Stats Hexagon",
+            "showStatsHint": "Character ability score diagram",
+            "hideStr": "Hide Strength",
+            "hideDex": "Hide Dexterity",
+            "hideCon": "Hide Constitution",
+            "hideInt": "Hide Intelligence",
+            "hideWis": "Hide Wisdom",
+            "hideCha": "Hide Charisma",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable",
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks"
+          }
+        },
+        "hero": {
+          "name": "Contrast Cut-In",
+          "description": "High-contrast diagonal reveal with bold typography",
+          "defaultTitle": "New Ally",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable",
+            "accentColor": "Accent Color",
+            "accentColorHint": "Accent color for the intro"
+          }
+        },
+        "villain": {
+          "name": "Villain Reveal",
+          "description": "Dark boss reveal with lightning, sparks, and glitch",
+          "threatApproaches": "A New Threat Approaches",
+          "defaultTitle": "Unknown Evil",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable",
+            "showThreatText": "Threat Text",
+            "particleCount": "Particle Count",
+            "particleCountHint": "Number of ambient particles",
+            "glitchEffect": "Glitch Effect",
+            "glitchEffectHint": "Distort portrait with glitch noise"
+          }
+        },
+        "borderlands": {
+          "name": "Comic Splash",
+          "description": "Comic book splash with bold colors and impact words",
+          "introLabel": "INTRODUCING",
+          "defaultTitle": "Unknown",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable",
+            "showImpactText": "Impact Words",
+            "showImpactTextHint": "Background comic impact words",
+            "impactText1": "Impact Word 1",
+            "impactText2": "Impact Word 2"
+          }
+        },
+        "genshin": {
+          "name": "Elemental Banner",
+          "description": "Elemental banner with portrait, title, and crest",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "showDescription": "Description",
+            "autoDetectElement": "Auto-detect Element",
+            "autoDetectElementHint": "Match element from character name and items",
+            "defaultElement": "Default Element",
+            "defaultElementHint": "Used when auto-detection is off or finds no match",
+            "elementNone": "None",
+            "elementPyro": "Flame",
+            "elementHydro": "Tide",
+            "elementElectro": "Storm",
+            "elementCryo": "Frost",
+            "elementAnemo": "Gale",
+            "elementGeo": "Stone",
+            "elementDendro": "Verdant",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        },
+        "arcane": {
+          "name": "Arcane Magic",
+          "description": "Rotating rune circles and arcane sparks",
+          "defaultTitle": "Mysterious Being",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "accentColor": "Arcane Color",
+            "accentColorHint": "Color of rune circles and glow",
+            "showDescription": "Description",
+            "particleCount": "Sparkle Count",
+            "particleCountHint": "Number of floating sparks",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        },
+        "neon": {
+          "name": "Neon Synthwave",
+          "description": "80s synthwave with neon grid and sun",
+          "defaultTitle": "New Arrival",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "mainColor": "Main Color",
+            "mainColorHint": "Primary neon color",
+            "showDescription": "Description",
+            "secondaryColor": "Secondary Color",
+            "secondaryColorHint": "Secondary neon color",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        },
+        "yakuza": {
+          "name": "Cherry Blossom",
+          "description": "Falling cherry petals and brush lettering",
+          "defaultTitle": "Welcome Guest",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "accentColor": "Blossom Color",
+            "accentColorHint": "Color of petals, rings, and accents",
+            "showDescription": "Description",
+            "petalCount": "Petal Count",
+            "petalCountHint": "Number of falling petals",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        },
+        "typewriter": {
+          "name": "Terminal",
+          "description": "Terminal dossier with sequential typing, ID photo, and status",
+          "defaultTitle": "Entry",
+          "bootLine1": "SYSTEM BOOT: SEQUENCE INITIALIZED",
+          "bootLine2": "DOSSIER DATABASE v2.4.1 // ACCESS GRANTED",
+          "bootLine3": "MEMORY CHECK ............ 640K OK",
+          "topbarLeft": "SYSCOM OS v2.4.1 // SECURE CHANNEL",
+          "topbarRight": "LINK",
+          "scanLabel": "SCANNING...",
+          "idPhoto": "ID PHOTO",
+          "fieldDesignation": "DESIGNATION",
+          "fieldName": "NAME",
+          "fieldNotes": "NOTES",
+          "fieldStatus": "STATUS",
+          "statusAlive": "ALIVE",
+          "footer": "DOSSIER // CLASSIFIED",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "accentColor": "Terminal Color",
+            "accentColorHint": "Color of text, borders, and cursor",
+            "typeSpeed": "Type Speed",
+            "typeSpeedHint": "Delay between characters in ms",
+            "showDescription": "Description",
+            "statusText": "Status Text",
+            "statusTextHint": "Value shown in the Status field",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        },
+        "noir": {
+          "name": "Noir",
+          "description": "Detective noir with blind shadows and rain",
+          "defaultTitle": "The Unknown",
+          "caseFile": "CASE FILE",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "accentColor": "Accent Color",
+            "accentColorHint": "Color of title and accents",
+            "showDescription": "Description",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        },
+        "western": {
+          "name": "Wanted Poster",
+          "description": "Wanted poster on aged paper",
+          "defaultHeadline": "WANTED",
+          "deadOrAlive": "Dead or Alive",
+          "reward": "Reward",
+          "perHead": "Per Head",
+          "marshal": "By order of the Marshal",
+          "stampText": "CAPTURED",
+          "settings": {
+            "clickDelay": "Click Delay",
+            "clickDelayHint": "Delay before click-to-close unlocks",
+            "headline": "Headline",
+            "headlineHint": "Top banner text",
+            "subhead": "Subheadline",
+            "subheadHint": "Line under the headline",
+            "bounty": "Bounty Amount",
+            "bountyHint": "Reward amount or text",
+            "showBounty": "Bounty",
+            "showTitle": "Title",
+            "showTitleHint": "Display title under the name",
+            "footerText": "Footer Text",
+            "footerTextHint": "Bottom line on the poster",
+            "portraitTone": "Portrait Tone",
+            "portraitToneHint": "How the portrait is colored",
+            "toneSepia": "Sepia",
+            "toneMono": "Black & White",
+            "toneColor": "Color",
+            "paperColor": "Paper Color",
+            "paperColorHint": "Base color of the poster paper",
+            "inkColor": "Ink Color",
+            "inkColorHint": "Color of all printed text",
+            "accentColor": "Accent Color",
+            "accentColorHint": "Color of the bounty value and stamp",
+            "posterSize": "Poster Size",
+            "posterSizeHint": "Scale of the poster on screen",
+            "showStamp": "Captured Stamp",
+            "autoCloseDelay": "Auto-Close",
+            "autoCloseDelayHint": "0 to disable"
+          }
+        }
+      },
+      "opening": {
+        "starWars": {
+          "name": "Galactic Crawl",
+          "description": "Tilted scrolling prologue among the stars",
+          "dialogTitle": "Opening Crawl",
+          "textLabel": "Enter your crawl text",
+          "placeholder": "Across the uncharted reaches of forgotten realms...\n\nEnter your opening prologue here.\n\nSeparate paragraphs with a blank line.",
+          "play": "Play",
+          "skip": "Skip",
+          "alreadyPlaying": "Already playing",
+          "speedLabel": "Crawl Speed",
+          "fast": "Fast",
+          "medium": "Medium",
+          "slow": "Slow",
+          "settings": {
+            "defaultSpeed": "Default Speed",
+            "textColor": "Text Color",
+            "showStars": "Stars",
+            "perspectiveAngle": "Perspective Angle",
+            "perspectiveAngleHint": "Crawl perspective angle in degrees"
+          }
+        },
+        "champions": {
+          "name": "Champions",
+          "description": "Pre-session party showcase with stat-based titles",
+          "requiresSystem": "Requires D&D 5e",
+          "alreadyPlaying": "Already playing",
+          "noData": "No session data yet",
+          "settings": {
+            "slideDuration": "Slide Duration",
+            "slideDurationHint": "Duration of each character slide",
+            "showDescriptions": "Title Descriptions",
+            "showDescriptionsHint": "Flavor text under each title"
+          },
+          "slides": {
+            "intro": {
+              "title": "Our Party",
+              "subtitle": "HEROES OF THE CAMPAIGN"
+            },
+            "finale": {
+              "title": "The Adventure Begins",
+              "subtitle": "LET THE DICE FALL"
+            }
+          }
+        }
+      },
+      "ending": {
+        "skip": "Skip",
+        "tbc": {
+          "name": "To Be Continued",
+          "description": "Sepia freeze-frame cliffhanger ending with classic arrow banner and cast credits",
+          "gameMaster": "Game Master",
+          "asRole": "As",
+          "andManyOthers": "...and many others",
+          "worldCreator": "World Creator",
+          "unknownHero": "Unknown Hero",
+          "thanksForPlaying": "Thanks for Playing!",
+          "toBeContinued": "To be continued...",
+          "alreadyPlaying": "Already playing",
+          "settings": {
+            "tbcImage": "Arrow Image",
+            "tbcImageHint": "Path to the To Be Continued image",
+            "delayMs": "Start Delay",
+            "delayMsHint": "Delay before the effect starts",
+            "effectDuration": "Effect Duration",
+            "effectDurationHint": "Duration of the sepia effect",
+            "slideDuration": "Slide Duration",
+            "slideDurationHint": "Duration of each credits slide",
+            "showCredits": "Credits",
+            "showCreditsHint": "Display player credits after the effect",
+            "sepiaIntensity": "Sepia Intensity"
+          }
+        },
+        "directedBy": {
+          "name": "Directed By",
+          "description": "Movie-style end credits with director, producer, and cast",
+          "directedBy": "Directed by",
+          "executiveProducer": "Executive Producer",
+          "producedBy": "Produced by",
+          "starring": "Starring",
+          "as": "as",
+          "thanks": "Thank You for Playing",
+          "allRights": "All characters and events in this game are fictional. Any resemblance to real persons is purely coincidental.",
+          "fictional": "No adventurers were harmed during the making of this campaign. Probably.",
+          "alreadyPlaying": "Already playing",
+          "settings": {
+            "slideDuration": "Slide Duration",
+            "slideDurationHint": "Duration of each title slide",
+            "showExecutiveProducer": "Executive Producer",
+            "showProducer": "Producer",
+            "customDirectorName": "Director Name",
+            "customDirectorNameHint": "Uses the GM's name by default",
+            "showEndCredits": "Final Slide",
+            "showEndCreditsHint": "Thank-you slide at the end"
+          }
+        },
+        "michaelBay": {
+          "name": "Blockbuster Finale",
+          "description": "Action-movie cut to credits with bass drop, flare, and director title",
+          "alreadyPlaying": "Already playing",
+          "settings": {
+            "videoPath": "Custom Video",
+            "videoPathHint": "Leave empty for the built-in scene",
+            "videoDelay": "Drop Delay",
+            "videoDelayHint": "Build-up time before the title slam",
+            "autoClose": "Auto-Close",
+            "autoCloseHint": "Close automatically when finished"
+          }
+        },
+        "battleStats": {
+          "name": "Theater of Legends",
+          "description": "Animated session recap: hero titles, rankings, and combat stats",
+          "requiresSystem": "Requires D&D 5e",
+          "alreadyPlaying": "Already playing",
+          "noData": "No session data yet",
+          "settings": {
+            "slideDuration": "Slide Duration",
+            "slideDurationHint": "Duration of each slide of the show",
+            "showHealingSlide": "Healing Rankings",
+            "showHealingSlideHint": "Include the healing rankings slide"
+          },
+          "labels": {
+            "damage": "DMG",
+            "damageDealt": "Damage Dealt",
+            "healing": "Healing",
+            "spells": "spells",
+            "spellsLong": "Spells",
+            "attacks": "Attacks",
+            "crits": "Crits",
+            "skills": "Skills",
+            "saves": "Saves",
+            "taken": "Damage Taken",
+            "none": "none",
+            "mainTitle": "Main Title",
+            "miniTitles": "Mini Titles",
+            "kills": "kills",
+            "downs": "downs",
+            "skillChecks": "checks"
+          },
+          "slides": {
+            "intro": {
+              "title": "Theater of Legends",
+              "subtitle": "Today's session recap"
+            },
+            "mvp": {
+              "title": "Star of the Show"
+            },
+            "roles": {
+              "title": "Roles & Rewards",
+              "subtitle": "Main and mini titles for standout plays"
+            },
+            "miniTitles": {
+              "title": "Little Triumphs",
+              "subtitle": "Memorable achievements from the session"
+            },
+            "damage": {
+              "title": "Damage Rankings",
+              "subtitle": "Highest damage dealers this session"
+            },
+            "healing": {
+              "title": "Healing Rankings",
+              "subtitle": "Top healers this session"
+            },
+            "luck": {
+              "title": "Luck & Fate",
+              "subtitle": "Critical moments this session"
+            },
+            "spells": {
+              "title": "Spellcasting",
+              "subtitle": "Most active spellcasters"
+            },
+            "overview": {
+              "title": "Session Overview",
+              "subtitle": "At a glance",
+              "footer": "Data tracked for {0} characters"
+            },
+            "finale": {
+              "title": "Curtain Call",
+              "subtitle": "May the dice be with you",
+              "footer": "Stats provided by Showstopper"
+            },
+            "kills": {
+              "title": "Kill Ranking",
+              "subtitle": "Who sent the enemies to their graves"
+            },
+            "downs": {
+              "title": "Down Ranking",
+              "subtitle": "Who hit the floor the most"
+            },
+            "skills": {
+              "title": "Skill Ranking",
+              "subtitle": "Out-of-combat prowess counts too"
+            },
+            "spellbook": {
+              "title": "Party Grimoire",
+              "subtitle": "The session's favorite spells"
+            }
+          }
+        },
+        "heroes": {
+          "name": "Heroes' Titles",
+          "description": "End-of-session party showcase with stat-based titles",
+          "requiresSystem": "Requires D&D 5e",
+          "alreadyPlaying": "Already playing",
+          "noData": "No session data yet",
+          "settings": {
+            "slideDuration": "Slide Duration",
+            "slideDurationHint": "Duration of each character slide",
+            "showDescriptions": "Title Descriptions",
+            "showDescriptionsHint": "Flavor text under each title"
+          },
+          "slides": {
+            "intro": {
+              "title": "Session Report",
+              "subtitle": "HEROES OF THE NIGHT"
+            },
+            "finale": {
+              "title": "Thank You for Playing",
+              "subtitle": "UNTIL NEXT TIME"
+            }
+          }
+        }
+      },
+      "titles": {
+        "executioner": {
+          "title": "Executioner",
+          "desc": "Delivered the final blow more often than anyone else",
+          "chip": "Kills",
+          "titleAlt": [
+            "Cutthroat",
+            "The Butcher"
+          ],
+          "descAlt": [
+            "Enemies rarely saw the fight's end"
+          ]
+        },
+        "teamHealer": {
+          "title": "Team Healer",
+          "desc": "Kept the party standing through every fight",
+          "chip": "Healed",
+          "titleAlt": [
+            "Party Medic",
+            "Benefactor"
+          ],
+          "descAlt": [
+            "Wounds closed faster than they opened"
+          ]
+        },
+        "guardian": {
+          "title": "Guardian Angel",
+          "desc": "Takes the hit, then patches up the party",
+          "chip": "Taken",
+          "titleAlt": [
+            "The Party's Aegis"
+          ],
+          "descAlt": [
+            "Holds the line, mends the wounds"
+          ]
+        },
+        "livingShield": {
+          "title": "Living Shield",
+          "desc": "Stood between the party and harm",
+          "chip": "Damage Taken",
+          "titleAlt": [
+            "The Party's Shield"
+          ],
+          "descAlt": [
+            "Damage found them first"
+          ]
+        },
+        "lightningRod": {
+          "title": "Lightning Rod",
+          "desc": "Drew all the enemy's damage onto themselves",
+          "chip": "Damage Taken",
+          "titleAlt": [
+            "Lightning Magnet"
+          ],
+          "descAlt": [
+            "Every enemy swing had their name on it"
+          ]
+        },
+        "damageMachine": {
+          "title": "Damage Machine",
+          "desc": "Turned the battlefield into a one-sided affair",
+          "chip": "Damage Dealt",
+          "titleAlt": [
+            "The Sledgehammer",
+            "Fist of Vengeance"
+          ],
+          "descAlt": [
+            "Damage counters ran red in their name"
+          ]
+        },
+        "glassCannon": {
+          "title": "Glass Cannon",
+          "desc": "Deals hard, gets hit just as hard",
+          "chip": "Damage",
+          "titleAlt": [
+            "Crystal Bomb"
+          ],
+          "descAlt": [
+            "Either falls first, or fells them all"
+          ]
+        },
+        "partyMage": {
+          "title": "Party Mage",
+          "desc": "The party's arcane powerhouse",
+          "chip": "Spells",
+          "titleAlt": [
+            "Court Wizard",
+            "Arcane Lord"
+          ],
+          "descAlt": [
+            "A spell for every occasion"
+          ]
+        },
+        "bookworm": {
+          "title": "Walking Library",
+          "desc": "Dozens of spells in their repertoire",
+          "chip": "Spells Known",
+          "titleAlt": [
+            "Tome Mage"
+          ],
+          "descAlt": [
+            "Formulae and scrolls to spare"
+          ]
+        },
+        "bladeMaster": {
+          "title": "Blade Master",
+          "desc": "A blur of steel and precision",
+          "chip": "Attacks",
+          "titleAlt": [
+            "Blade Dancer"
+          ],
+          "descAlt": [
+            "Steel sings in their hands"
+          ]
+        },
+        "hurricane": {
+          "title": "Hurricane",
+          "desc": "A relentless storm of attacks",
+          "chip": "Attacks",
+          "titleAlt": [
+            "Stormfront"
+          ],
+          "descAlt": [
+            "Most attacks landed in the session"
+          ]
+        },
+        "sniper": {
+          "title": "Sniper",
+          "desc": "Every single strike counted",
+          "chip": "Damage Dealt",
+          "titleAlt": [
+            "Dead Eye"
+          ],
+          "descAlt": [
+            "One shot, one target"
+          ]
+        },
+        "critMachine": {
+          "title": "Crit Machine",
+          "desc": "Crits that make the dice tremble",
+          "chip": "Crits",
+          "titleAlt": [
+            "Crit Lord",
+            "Red Numbers"
+          ],
+          "descAlt": [
+            "The dice love blood"
+          ]
+        },
+        "fortuneFavored": {
+          "title": "Fortune's Favorite",
+          "desc": "The dice answer when they call",
+          "chip": "Nat 20",
+          "titleAlt": [
+            "Fortune's Darling"
+          ],
+          "descAlt": [
+            "Fortune holds their hand"
+          ]
+        },
+        "diceAce": {
+          "title": "Dice Ace",
+          "desc": "The dice obey their hand",
+          "chip": "Nat 20",
+          "titleAlt": [
+            "High Roller"
+          ],
+          "descAlt": [
+            "Twenties stick to their fingers"
+          ]
+        },
+        "diceShaman": {
+          "title": "Dice Shaman",
+          "desc": "Fortune and doom in a single hand",
+          "chip": "Luck",
+          "titleAlt": [
+            "Dice Oracle"
+          ],
+          "descAlt": [
+            "Reads the rolls like fate"
+          ]
+        },
+        "unlucky": {
+          "title": "Unlucky",
+          "desc": "The dice have a personal grudge",
+          "chip": "Fumbles",
+          "titleAlt": [
+            "Dice-Cursed",
+            "Enemy of RNG"
+          ],
+          "descAlt": [
+            "Ones find them on their own"
+          ]
+        },
+        "jackOfAllTrades": {
+          "title": "Jack of All Trades",
+          "desc": "A little bit of everything, done masterfully",
+          "chip": "Skill Checks",
+          "titleAlt": [
+            "The Generalist"
+          ],
+          "descAlt": [
+            "Every skill is their skill"
+          ]
+        },
+        "unbreakable": {
+          "title": "Unbreakable",
+          "desc": "Passed the toughest saving throws",
+          "chip": "Saves",
+          "titleAlt": [
+            "The Rock"
+          ],
+          "descAlt": [
+            "Fail a save? Never heard of it"
+          ]
+        },
+        "deathDefier": {
+          "title": "Death Defier",
+          "desc": "Laughed in the face of death itself",
+          "chip": "Death Saves",
+          "titleAlt": [
+            "Back from the Brink"
+          ],
+          "descAlt": [
+            "Stood firm at death's door"
+          ]
+        },
+        "walkingDrama": {
+          "title": "Walking Drama",
+          "desc": "Wherever they go, chaos follows",
+          "chip": "Downs",
+          "titleAlt": [
+            "Drama Generator"
+          ],
+          "descAlt": [
+            "Every turn is a plot twist"
+          ]
+        },
+        "survivor": {
+          "title": "Last One Standing",
+          "desc": "Soaked the most damage without ever falling",
+          "chip": "Damage Taken",
+          "titleAlt": [
+            "Sole Survivor"
+          ],
+          "descAlt": [
+            "Stayed on their feet to the end"
+          ]
+        },
+        "ironWill": {
+          "title": "Iron Will",
+          "desc": "Unshakable focus in the heat of battle",
+          "chip": "Concentration",
+          "titleAlt": [
+            "Unbending Mind"
+          ],
+          "descAlt": [
+            "Mind control? Not today"
+          ]
+        },
+        "darkHorse": {
+          "title": "Dark Horse",
+          "desc": "Too unpredictable to label",
+          "chip": "Rolls",
+          "titleAlt": [
+            "Wild Card"
+          ],
+          "descAlt": [
+            "Nobody knows what they'll pull next"
+          ]
+        },
+        "healMagnet": {
+          "title": "Heal Magnet",
+          "desc": "The whole party kept them patched up",
+          "chip": "Healing Received"
+        },
+        "elementalist": {
+          "title": "Elementalist",
+          "desc": "Wielded a wide array of damage types",
+          "chip": "Damage Types"
+        },
+        "battleMage": {
+          "title": "Battle Mage",
+          "desc": "A sword in one hand, lightning in the other",
+          "chip": "Attacks + Spells"
+        },
+        "goldRoll": {
+          "title": "Golden Roll",
+          "desc": "The session's finest single roll",
+          "chip": "Best Roll"
+        },
+        "locksmith": {
+          "title": "Lockpicker",
+          "desc": "Locks and traps tremble at their approach",
+          "chip": "Tool Checks"
+        },
+        "failureMagnet": {
+          "title": "Failure Magnet",
+          "desc": "Saving throws avoided them entirely",
+          "chip": "Saves Failed"
+        },
+        "brittleFocus": {
+          "title": "Fragile Focus",
+          "desc": "One tap and the spell crumbled",
+          "chip": "Broken Focus"
+        },
+        "secondChance": {
+          "title": "Second Chance",
+          "desc": "Rose on a natural 20 death save",
+          "chip": "Death Save 20s"
+        },
+        "fateForsaken": {
+          "title": "Forsaken by Fate",
+          "desc": "Rolled a natural 1 on a death save",
+          "chip": "Death Save 1s"
+        },
+        "mini": {
+          "diceGod": {
+            "title": "Master of Twenties",
+            "desc": "Two or more natural 20s in the session"
+          },
+          "killer": {
+            "title": "Double Kill",
+            "desc": "At least two enemies slain"
+          },
+          "glassHit": {
+            "title": "Soaked 50+ Damage",
+            "desc": "Took 50 or more damage in the session"
+          },
+          "dealtBig": {
+            "title": "Dealt 100+ Damage",
+            "desc": "Dealt 100 or more damage in the session"
+          },
+          "crit": {
+            "title": "Critical Hit",
+            "desc": "Landed at least one critical hit"
+          },
+          "deathDefied": {
+            "title": "Cheated Death",
+            "desc": "Survived a death saving throw"
+          },
+          "firstBlood": {
+            "title": "First Blood",
+            "desc": "Scored the first kill"
+          },
+          "nat20": {
+            "title": "Natural 20",
+            "desc": "Rolled a natural 20"
+          },
+          "fumble": {
+            "title": "Fumbled",
+            "desc": "Fumbled an attack"
+          },
+          "wentDown": {
+            "title": "Knocked Down",
+            "desc": "Fell in battle"
+          },
+          "concentrated": {
+            "title": "Firm Concentration",
+            "desc": "Held concentration twice or more"
+          },
+          "saveMaster": {
+            "title": "Three Saves Made",
+            "desc": "Made three or more saving throws"
+          },
+          "skillPro": {
+            "title": "Skill Pro",
+            "desc": "Three or more skill checks"
+          },
+          "advantaged": {
+            "title": "Rolled with Advantage",
+            "desc": "Rolled with advantage twice or more"
+          },
+          "disadvantaged": {
+            "title": "Rolled with Disadvantage",
+            "desc": "Rolled with disadvantage twice or more"
+          },
+          "healer": {
+            "title": "First Aid",
+            "desc": "Restored allies' health"
+          },
+          "spellFirst": {
+            "title": "First Spell",
+            "desc": "Cast a spell"
+          },
+          "tankHit": {
+            "title": "Took a Hit",
+            "desc": "Took an enemy hit"
+          },
+          "nat1": {
+            "title": "Natural 1",
+            "desc": "Rolled a natural 1"
+          },
+          "participant": {
+            "title": "Participant",
+            "desc": "Took part in the session"
+          }
+        }
+      },
+      "tiers": {
+        "common": "Title",
+        "rare": "Rare Title",
+        "epic": "Epic Title"
+      },
+      "finisher": {
+        "common": {
+          "settings": {
+            "intensity": "Intensity",
+            "intensityHint": "Particle and visual effect density",
+            "camera": "Camera Zoom",
+            "cameraHint": "Briefly zoom in on the target",
+            "removeToken": "Delete Token",
+            "removeTokenHint": "Delete the token from the scene after the animation"
+          },
+          "noTarget": "Select or target a token first",
+          "confirmRemoveTitle": "Delete Token?",
+          "confirmRemoveContent": "The token will be permanently deleted after the animation. Continue?"
+        },
+        "slashing": {
+          "name": "Cleave",
+          "description": "Splits the target in half with a spray of blood",
+          "caption": "CLEAVED"
+        },
+        "piercing": {
+          "name": "Impale",
+          "description": "Riddles the target with strikes over a spreading pool of blood",
+          "caption": "RIDDLED"
+        },
+        "fire": {
+          "name": "Incineration",
+          "description": "Burns the target to ash scattered on the wind",
+          "caption": "IMMOLATED"
+        },
+        "cold": {
+          "name": "Freeze",
+          "description": "Encases the target in ice, leaving a frozen statue",
+          "caption": "SHATTERED"
+        },
+        "thunder": {
+          "name": "Sonic Blast",
+          "description": "Shatters the target with shockwaves",
+          "caption": "FLATTENED"
+        },
+        "force": {
+          "name": "Disintegration",
+          "description": "Beam of pure energy turns the target to dust",
+          "caption": "DISINTEGRATED"
+        },
+        "soul": {
+          "name": "Soul Departure",
+          "description": "Turns the body to dust as a glowing soul ascends",
+          "caption": "RELEASED"
+        },
+        "glitch": {
+          "name": "Glitch",
+          "description": "Digital static and RGB split erase the target line by line",
+          "caption": "SIGNAL LOST"
+        },
+        "singularity": {
+          "name": "Singularity",
+          "description": "Collapses the target into a gravity point that vanishes in a flash",
+          "caption": "CONSUMED"
+        },
+        "smite": {
+          "name": "Divine Smite",
+          "description": "Pillar of celestial light consumes the target in glowing runes",
+          "caption": "PUNISHED"
+        },
+        "blackhole": {
+          "name": "Black Hole",
+          "description": "Abyssal rift beneath the target pulls it into the void",
+          "caption": "INTO THE VOID"
+        },
+        "shaders": {
+          "label": "Subject Shader",
+          "none": "Auto",
+          "frozen": "Frozen",
+          "petrified": "Petrified",
+          "burning": "Burning",
+          "corrupted": "Corrupted",
+          "gilded": "Gilded",
+          "bloodrage": "Bloodrage",
+          "glitch": "Glitch"
+        }
+      }
+    },
+    "ItemDisplay": {
+      "ConfigTitle": "Item Display",
+      "ConfigTitleFor": "Item Display: {name}",
+      "ConfigButton": "Configure Display",
+      "ContextMenuSheet": "Open Sheet",
+      "ContextMenuConfig": "Display Config",
+      "ContextMenuUnequip": "Unequip",
+      "ContextMenuIgnite": "Ignite",
+      "ContextMenuExtinguish": "Extinguish",
+      "ContextMenuHoodOn": "Lower Hood",
+      "ContextMenuHoodOff": "Raise Hood",
+      "EnableDisplay": "Show on Token",
+      "OrientationHint": "Weapon tip in the sprite should point top-right",
+      "Section": {
+        "Appearance": "Appearance",
+        "Position": "Position",
+        "Animation": "Animation",
+        "Interactivity": "Interactivity",
+        "Trail": "Trail",
+        "Collision": "Collision"
+      },
+      "Image": "Image",
+      "Scale": "Scale",
+      "Rotation": "Rotation",
+      "FlipX": "Flip X",
+      "FlipY": "Flip Y",
+      "AutoMirror": "Auto Mirror",
+      "AutoSize": "Auto Size",
+      "RotateWithToken": "Rotate with Token",
+      "HoverColor": "Hover Color",
+      "HoverUseProfile": "Profile Color",
+      "HoverUseCustom": "Custom Color",
+      "HoverThickness": "Outline Thickness",
+      "ZIndex": "Layer",
+      "AnchorSide": "Anchor Side",
+      "OffsetX": "Offset X",
+      "OffsetY": "Offset Y",
+      "IdleAnimation": "Idle Animation",
+      "IdleSpeed": "Animation Speed",
+      "IdleIntensity": "Animation Intensity",
+      "EnableDrag": "Mouse Drag",
+      "EnableDragHint": "Hold LMB to move the item",
+      "AllowSpin": "Allow Spin",
+      "FollowCursorRange": "Follow Cursor Range",
+      "FollowCursorAutoRotate": "Auto Rotate on Move",
+      "TrailType": "Trail Type",
+      "TrailThreshold": "Speed Threshold",
+      "TrailOpacity": "Trail Opacity",
+      "TrailLifetime": "Trail Lifetime",
+      "CollisionModeLabel": "Collision Mode",
+      "CollisionSound": "Collision Sound",
+      "CollisionVolume": "Collision Volume",
+      "CollisionShakeStrength": "Shake Strength",
+      "AnchorTop": "Top",
+      "AnchorBottom": "Bottom",
+      "AnchorLeft": "Left",
+      "AnchorRight": "Right",
+      "AnchorTopLeft": "Top Left",
+      "AnchorTopRight": "Top Right",
+      "AnchorBottomLeft": "Bottom Left",
+      "AnchorBottomRight": "Bottom Right",
+      "AnchorCenter": "Center",
+      "AnimationFloat": "Float",
+      "AnimationPulse": "Pulse",
+      "AnimationSwing": "Swing",
+      "AnimationNone": "None",
+      "TrailAfterimage": "Afterimage",
+      "TrailWind": "Wind",
+      "TrailSpark": "Spark",
+      "CollisionModeDisabled": "Disabled",
+      "CollisionModeReceive": "Receive Only",
+      "CollisionModeDeal": "Deal Only",
+      "CollisionModeBoth": "Both",
+      "FollowCursorAutoRotateOffset": "Rotation Offset"
+    },
+    "InventoryNotifications": {
+      "SettingName": "Inventory+",
+      "SettingHint": "Popup notifications when gaining or losing items",
+      "MenuName": "Inventory+",
+      "MenuLabel": "Configure",
+      "MenuHint": "Notifications and rarity colorization for items",
+      "ConfigTitle": "Inventory+",
+      "SectionGeneral": "General",
+      "ColorizeEnabled": "Rarity Highlights",
+      "ColorizeEnabledHint": "Colorize item names in character sheets and item sheets by rarity",
+      "ColorizeTooltipEnabled": "Colored Tooltips",
+      "ColorizeTooltipEnabledHint": "Colorize item names in tooltips on hover",
+      "BackgroundGradientEnabled": "Icon Gradient",
+      "BackgroundGradientEnabledHint": "Apply dark gradient background to item images in inventory",
+      "RarityColors": "Rarity Colors",
+      "RarityColorsHint": "Used for notification borders and item names",
+      "ResetColor": "Reset color",
+      "Save": "Save",
+      "rarity": {
+        "common": "Common",
+        "uncommon": "Uncommon",
+        "rare": "Rare",
+        "veryRare": "Very Rare",
+        "legendary": "Legendary",
+        "artifact": "Artifact"
+      },
+      "action": {
+        "gained": "Gained",
+        "lost": "Lost"
+      }
+    },
+    "ContextMenu": {
+      "OpenSheet": "Open Sheet",
+      "EditToken": "Edit Token",
+      "Target": "Target Token",
+      "Whisper": "Whisper",
+      "Trade": "Trade",
+      "PortraitSettings": "Portrait Settings"
+    },
+    "Settings": {
+      "Save": "Save",
+      "MenuTitle": "Portrait Panel",
+      "Enabled": {
+        "Name": "Portrait Panel",
+        "Hint": "Show player portraits on screen"
+      },
+      "Fieldset": {
+        "Main": "General",
+        "Display": "Display"
+      },
+      "PortraitSize": {
+        "Name": "Portrait Size",
+        "Hint": "Avatar size on the panel",
+        "XS": "Extra Small",
+        "Small": "Small",
+        "Medium": "Medium",
+        "Large": "Large",
+        "XL": "Extra Large"
+      },
+      "ShowStats": {
+        "Name": "Ping & FPS",
+        "Hint": "Show ping and frame rate widget"
+      },
+      "SpeakingShake": {
+        "Name": "Speaking Shake",
+        "Hint": "Shake portrait while speaking"
+      },
+      "MenuButton": {
+        "Name": "Portrait Panel",
+        "Label": "Configure",
+        "Hint": "Player portrait panel settings"
+      }
+    },
+    "Portrait": {
+      "SettingsTitle": "Portrait Settings",
+      "SettingsTitleFor": "Portrait: {name}",
+      "SectionIdentity": "Display",
+      "SectionImages": "Portraits",
+      "DisplayName": "Display Name",
+      "DisplayMode": "Portrait Source",
+      "ModeCharacter": "Character",
+      "ModeUser": "User",
+      "IdleImage": "Idle",
+      "SpeakingImage": "Speaking",
+      "ResetImage": "Reset image",
+      "PlaceholderDefault": "Default",
+      "Save": "Save",
+      "AfkLabel": "AFK",
+      "BreakLabel": "Break",
+      "ActiveLabel": "Active",
+      "Quality": {
+        "Excellent": "Excellent connection",
+        "Good": "Good connection",
+        "Poor": "Poor connection",
+        "Lost": "Connection lost",
+        "Unknown": "No connection data"
+      },
+      "MsShort": "ms"
+    },
+    "Notifications": {
+      "SaveFailed": "Failed to save settings",
+      "TokenCreateFailed": "Failed to create token",
+      "SelectTokenOrPosition": "Select a token or specify a position",
+      "SequencerRequired": "Sequencer module is required"
+    },
+    "Stats": {
+      "Title": "Game Statistics",
+      "Overview": "Overview",
+      "Characters": "Characters",
+      "OpenButton": "Open Statistics",
+      "MenuHint": "Open the roll, combat, and session statistics window",
+      "SearchPlaceholder": "Search characters and rolls…",
+      "NoFilterMatches": "No matching entries found",
+      "NoRecentRolls": "No recent rolls yet",
+      "ExportChat": "Send to Chat",
+      "ExportSummary": "Send Summary to Chat",
+      "OpenSheet": "Open Sheet",
+      "PlayerBadge": "Player",
+      "NpcBadge": "NPC",
+      "HealingGiven": "Healing Given",
+      "SummonDamage": "By Summons",
+      "Summoner": "Summoner",
+      "D20Rolls": "d20 Rolls",
+      "SectionCombat": "Combat & Attacks",
+      "SectionSurvival": "Damage & Survival",
+      "SectionSaves": "Saving Throws & Dice",
+      "DamageTypes": "Damage Types",
+      "UnknownType": "Untyped",
+      "LuckCol": "20 / 1",
+      "Outcome": "Outcome",
+      "HoursShort": "h",
+      "MinutesShort": "m",
+      "AvgDC": "Avg DC",
+      "SortedAsc": "Sorted ascending by {column}",
+      "SortedDesc": "Sorted descending by {column}",
+      "AllTime": "All Time",
+      "NoData": "No data yet",
+      "ConfirmResetTitle": "Reset Statistics?",
+      "ConfirmResetContent": "<strong>Completely clear</strong> all recorded statistics? This cannot be undone.",
+      "Crits": "Crits",
+      "Fumbles": "Fumbles",
+      "DamageDealt": "Dealt",
+      "DamageUnits": "dmg",
+      "SpellLevels": "Spell Levels",
+      "NoStatsExport": "No stats to export",
+      "StatsExported": "Stats exported to chat",
+      "HealingReceived": "Healing Received",
+      "Success": "Successes",
+      "Fail": "Failures",
+      "AbilityChecks": "Ability Checks",
+      "Tools": "Tools",
+      "Nat20": "Nat 20",
+      "Nat1": "Nat 1",
+      "Percent": "%",
+      "Session": "Session",
+      "Rolls": "Rolls",
+      "ItemBreakdown": "Item Breakdown",
+      "Best": "Best",
+      "RollLog": "Recent Rolls",
+      "NewSession": "New Session",
+      "ResetStats": "Reset",
+      "AllChars": "All",
+      "PlayersOnly": "Players",
+      "Total": "Total",
+      "UsesCount": "Times Used",
+      "ConfirmNewSessionTitle": "Start New Session?",
+      "ConfirmNewSessionContent": "Current session stats will move to All Time, and session counters will reset.",
+      "StatsEnabled": {
+        "Name": "Collect Statistics",
+        "Hint": "Automatically record roll and combat statistics"
+      },
+      "Taken": "Taken",
+      "Kills": "Kills",
+      "Downs": "Downs",
+      "Concentration": "Concentration",
+      "Time": "Time",
+      "Character": "Character",
+      "CritSave": "Crit Success",
+      "CritFail": "Crit Fail"
+    },
+    "SmoothCamera": {
+      "Title": "Smooth Camera",
+      "Label": "Configure",
+      "SectionGeneral": "General",
+      "SectionSpeed": "Camera Speed",
+      "Enable": "Smooth Camera",
+      "PanSpeed": "Pan Speed",
+      "ZoomSpeed": "Zoom Speed",
+      "Save": "Save",
+      "Enabled": {
+        "Name": "Smooth Camera",
+        "Hint": "Smooth camera panning and zooming"
+      }
+    },
+    "blood": {
+      "splatterConflict": "Showstopper disabled overlapping Splatter features",
+      "settings": {
+        "enabled": "Blood System",
+        "enabledHint": "Damage splashes, death pools, footprints, and snow accumulation",
+        "color": "Default Blood Color",
+        "colorHint": "Hex format #rrggbbaa. Per-token color overrides this",
+        "violence": "Blood Amount",
+        "violenceHint": "Number of splats and droplets per hit",
+        "threshold": "Bleeding Threshold",
+        "thresholdHint": "HP percentage below which hits draw blood",
+        "scale": "Stain Scale",
+        "scaleHint": "Global size multiplier for blood stains",
+        "trail": "Blood Trail",
+        "trailHint": "Wounded and bleeding tokens leave smears while moving",
+        "bleedStatus": "Bleeding Condition",
+        "bleedStatusHint": "Tokens with a bleed condition drip while standing and leave trails",
+        "bleedInterval": "Drip Interval",
+        "bleedIntervalHint": "Seconds between drips while standing still",
+        "footprints": "Footprints",
+        "footprintsHint": "Tokens stepping through blood or snow leave fading footprints",
+        "deathPool": "Death Pool",
+        "deathPoolHint": "Spawn a blood pool when a token drops to 0 HP",
+        "onlyInCombat": "Combat Only",
+        "onlyInCombatHint": "Generate blood only during active combat",
+        "wallsBlock": "Walls Block Splashes",
+        "wallsBlockHint": "Blood droplets do not pass through walls",
+        "renderScale": "Texture Quality",
+        "renderScaleHint": "Stain bake resolution. Lower values use less video memory",
+        "snowAccumulation": "Snow Accumulation",
+        "snowAccumulationHint": "Snow and blizzard weather gradually cover the scene as world time advances",
+        "snowRate": "Snowfall Speed",
+        "snowRateHint": "How quickly snowfall covers the scene",
+        "snowRateSlow": "Slow",
+        "snowRateNormal": "Normal",
+        "snowRateFast": "Fast",
+        "snowThaw": "Snow Thaw",
+        "snowThawHint": "Snow gradually melts after snowfall stops, faster during rain",
+        "useBloodsheet": "Color by Creature Type",
+        "useBloodsheetHint": "Pick blood color automatically for undead, constructs, oozes, and more",
+        "hpPath": "Current HP Path",
+        "hpPathHint": "Actor system data path for current HP",
+        "hpMaxPath": "Max HP Path",
+        "hpMaxPathHint": "Actor system data path for maximum HP",
+        "useWounds": "Wounds Mode",
+        "useWoundsHint": "For systems where wounds increase as damage is taken",
+        "creatureTypePath": "Creature Type Path",
+        "creatureTypePathHint": "Actor system data path for creature type",
+        "creatureTypeCustomPath": "Custom Creature Type Path",
+        "creatureTypeCustomPathHint": "Optional data path for a custom creature type",
+        "menuName": "Blood System",
+        "menuHint": "Blood, footprint, weather, and creature type settings",
+        "menuButton": "Configure",
+        "menuTitle": "Blood System",
+        "gmOnly": "Only the GM can change blood settings",
+        "save": "Save",
+        "sectionGeneral": "Generation & Rendering",
+        "sectionSnow": "Snow",
+        "sectionColors": "Colors & Creature Types",
+        "sectionPaths": "System Data Paths",
+        "renderScaleLow": "Low",
+        "renderScaleBalanced": "Balanced",
+        "renderScaleHigh": "High",
+        "renderScaleUltra": "Ultra",
+        "particles": "Splash Particles",
+        "particlesHint": "Flying droplets on impact",
+        "stationary": "Idle Drips",
+        "stationaryHint": "Wounded tokens periodically drip blood while standing still",
+        "stepPuffs": "Step Puffs",
+        "stepPuffsHint": "Small spray or snow puffs on each step",
+        "testButton": "Test Splash",
+        "testButtonHint": "Save these settings and splash the selected token",
+        "testNoToken": "Select a token on the scene to test",
+        "clearAll": "Clear All",
+        "clearTitle": "Clear Scene?",
+        "clearConfirm": "Remove all {count} stains from the scene? Ctrl+Z to undo",
+        "aging": "Blood Drying",
+        "agingHint": "Fresh blood darkens and fades as world time passes",
+        "dryHours": "Drying Time",
+        "dryHoursHint": "In-game hours until a stain dries completely",
+        "rainWash": "Rain Wash",
+        "rainWashHint": "Rain and storms gradually wash away exposed blood",
+        "tone": "Gore Preset",
+        "toneHint": "Grimdark increases blood, Mild keeps splashes restrained",
+        "toneDefault": "Default",
+        "toneGrimdark": "Grimdark",
+        "toneFamily": "Mild",
+        "damageProfiles": "Damage Type Effects",
+        "damageProfilesHint": "Fire cauterizes, necrotic blackens, cold freezes, poison and acid tint blood",
+        "backSplash": "Back-Splatter",
+        "backSplashHint": "Directed hits spray droplets back toward the attacker",
+        "castOff": "Swing Arc",
+        "castOffHint": "Killing blows leave an arc of droplets along the weapon swing",
+        "wallDrips": "Wall Drips",
+        "wallDripsHint": "Heavy hits near walls leave vertical blood drips",
+        "bloodied": "Bloodied Overlay",
+        "bloodiedHint": "Draw blood stains on tokens below the bleeding threshold",
+        "corpseImprints": "Corpse Imprints",
+        "corpseImprintsHint": "Leave a dark stained silhouette under slain NPCs",
+        "sectionSimulation": "Weather & Time",
+        "sectionView": "Effects & Performance"
+      },
+      "tools": {
+        "brush": "Trail Brush",
+        "splat": "Splat Selected Tokens",
+        "splatWarn": "Select at least one token first"
+      },
+      "hud": {
+        "title": "Trail Brush",
+        "collapseTip": "Collapse / expand panel",
+        "closeTip": "Close",
+        "modePaint": "Brush",
+        "eraseModeTitle": "Eraser mode",
+        "eraseAllMats": "All substances",
+        "eraseOnlyMat": "Only: {material}",
+        "color": "Trail color",
+        "size": "Brush size",
+        "sizeShort": "Size",
+        "density": "Density",
+        "alpha": "Opacity",
+        "alphaShort": "Opacity",
+        "elevation": "Elevation",
+        "elevManualTip": "Elevation ceiling: Q / E, Shift for 0.1",
+        "erase": "Eraser",
+        "noWash": "Do not wash in rain",
+        "noWashShort": "No wash",
+        "eraseMatOnly": "Erase active substance only",
+        "clearTitle": "Clear All Trails?",
+        "clearConfirm": "Remove all {count} stains from the scene? Ctrl+Z to undo",
+        "clearAll": "Clear All",
+        "clearMaterial": "Substance",
+        "clearMaterialFmt": "Clear: {material}",
+        "clearMaterialTip": "Clear selected substance only",
+        "clearMaterialTitle": "Clear Substance?",
+        "clearMaterialConfirm": "Remove all {count} «{material}» stains from the scene? Ctrl+Z to undo",
+        "type": {
+          "splat": "Splats",
+          "splash": "Splash",
+          "smear": "Smears",
+          "droplet": "Droplets",
+          "pool": "Pools",
+          "footprint": "Footprints",
+          "handprint": "Handprints"
+        },
+        "substance": {
+          "blood": "Blood",
+          "snow": "Snow"
+        },
+        "snowCardTitle": "Snow Depth & Relief",
+        "snowAltShort": "Alt: −1",
+        "snowAltHint": "Alt + LMB lowers snow by one level",
+        "snowSkirt": "Apron",
+        "snowSkirtTip": "Soft snow transition around tall drifts",
+        "snowSizePresetsTip": "Brush size: [ / ] or Shift + wheel",
+        "snowDepth": {
+          "auto": "Auto +1",
+          "lv1": "I Frost",
+          "lv2": "II Blanket",
+          "lv3": "III Drift",
+          "lv4": "IV Bank",
+          "lv5": "V Dune"
+        },
+        "snowDepthTip": {
+          "auto": "Raises snow depth with each stroke · key 0",
+          "lv1": "Light frost without footprints · key 1",
+          "lv2": "Even snow cover that holds footprints · key 2",
+          "lv3": "Low drift that leaves a trail · key 3",
+          "lv4": "Tall snowbank with deep shadow · key 4",
+          "lv5": "Massive deep snowbank · key 5"
+        },
+        "countTip": "Stains on the scene",
+        "touchOnly": "Trail brush works with a mouse only"
+      },
+      "tokenColorLabel": "Blood Color",
+      "tokenNoBloodLabel": "Does Not Bleed",
+      "tokenFootprintLabel": "Footprint Style",
+      "footprintStyles": {
+        "auto": "Auto by creature type",
+        "boot": "Boot / Foot",
+        "paw": "Beast Paw",
+        "claw": "Claws / Talons",
+        "hoof": "Hoof",
+        "slither": "Slither / Ooze",
+        "none": "No footprints"
+      },
+      "api": {
+        "gmOnly": "Only the GM can modify blood scene data"
+      }
+    },
+    "hud": {
+      "gmOnly": "Only the GM can use the trail brush"
+    },
+    "regionBehaviors": {
+      "snowZone": {
+        "label": "Snow Zone",
+        "labelHint": "Controls snow accumulation inside the region",
+        "FIELDS": {
+          "mode": {
+            "label": "Snow Mode",
+            "hint": "No snow for interiors. Trampled for sparse snow. Clearing removes snow over time"
+          }
+        },
+        "modes": {
+          "none": "No snow",
+          "trampled": "Trampled",
+          "clearing": "Clearing"
+        }
+      },
+      "bloodZone": {
+        "label": "Blood Zone",
+        "labelHint": "Controls blood generation and persistence inside the region",
+        "modes": {
+          "none": "No blood",
+          "tracked": "Rain-proof"
+        },
+        "FIELDS": {
+          "mode": {
+            "label": "Blood Mode",
+            "hint": "No blood disables stain generation. Rain-proof protects trails from rain"
+          }
+        }
+      }
+    },
+    "sanim": {
+      "menuTitle": "Combat Animations",
+      "openLabel": "Configure",
+      "menuHint": "Attack, miss, and critical hit animations for D&D 5e",
+      "save": "Save",
+      "enableAnim": {
+        "label": "Combat Animations",
+        "hint": "Master switch for attack animations"
+      },
+      "types": {
+        "legend": "Animation Types"
+      },
+      "attackAnim": {
+        "label": "Melee Weapon Attacks",
+        "hint": "Hits, misses, and shield blocks in melee"
+      },
+      "rangedAnim": {
+        "label": "Ranged Weapon Attacks",
+        "hint": "Shooter recoil, projectile flight, and target impact"
+      },
+      "spellAnim": {
+        "label": "Spell Attacks",
+        "hint": "Melee and ranged spell attacks tinted by damage type"
+      },
+      "crit": {
+        "label": "Critical Hits",
+        "hint": "Special animation on critical hits"
+      },
+      "general": {
+        "legend": "General"
+      },
+      "scene": {
+        "legend": "Scene & Camera"
+      },
+      "combatOnly": {
+        "label": "Combat Only",
+        "hint": "Play animations only during active combat"
+      },
+      "bars": {
+        "label": "Cinematic Bars",
+        "hint": "Black letterbox bars during attacks"
+      },
+      "darken": {
+        "label": "Scene Darkening",
+        "hint": "Dim the scene during attacks"
+      },
+      "autoPan": {
+        "label": "Camera Pan",
+        "hint": "Focus the camera on attack participants"
+      },
+      "gmIgnoreCamera": {
+        "label": "Ignore GM Camera",
+        "hint": "Skip automatic camera movement for the GM"
+      },
+      "integrations": {
+        "legend": "Integrations"
+      },
+      "midiTrigger": {
+        "label": "Trigger via midi-qol",
+        "hint": "Read hits, misses, and crits directly from midi-qol"
+      },
+      "autoFinisher": {
+        "label": "Auto-Finishers",
+        "hint": "Play a damage-typed finisher when an NPC drops to 0 HP. Requires midi-qol"
+      }
+    },
+    "tokenMovement": {
+      "MenuName": "Token Animations",
+      "MenuLabel": "Configure",
+      "MenuHint": "Configure token movement, jumps, and vertical display",
+      "ConfigTitle": "Token Animations",
+      "SectionMovement": "Token Movement",
+      "WalkLabel": "Movement",
+      "WalkHint": "Step bounce and sway when moving on the ground",
+      "JumpLabel": "Jump",
+      "JumpHint": "Arc jump with crouch and landing cushion",
+      "FlyLabel": "Flight & Hover",
+      "FlyHint": "Smooth flight, banking, and mid-air hovering",
+      "FallLabel": "Falling",
+      "FallHint": "Free-fall animation and landing impact",
+      "SectionVertical": "Vertical Display",
+      "VerticalLabel": "Vertical Display",
+      "VerticalHint": "Depth scale, ground shadow, and parallax for elevated tokens",
+      "BlurLabel": "Depth Blur",
+      "BlurHint": "Blur background and objects outside the current elevation",
+      "CameraZoomLabel": "Camera Zoom-Out",
+      "CameraZoomHint": "Smoothly zoom out when selecting an elevated token",
+      "Save": "Save"
+    },
+    "damageNumbers": {
+      "SettingName": "Combat Numbers",
+      "SettingHint": "Floating numbers for damage, healing, and temporary HP colored by damage type",
+      "MenuName": "Combat Numbers",
+      "MenuLabel": "Configure",
+      "MenuHint": "Configure font and scale for floating combat numbers",
+      "ConfigTitle": "Combat Numbers",
+      "SectionGeneral": "General",
+      "SectionSettings": "Appearance",
+      "EnabledLabel": "Combat Numbers",
+      "EnabledHint": "Replace default token number popups with colored arcs",
+      "Font": "Font Family",
+      "Size": "Number Scale",
+      "SizeSmall": "Small",
+      "SizeMedium": "Medium",
+      "SizeLarge": "Large",
+      "Immune": "Immune",
+      "Preview": "Preview",
+      "PreviewNoToken": "Select or place a visible token on the scene",
+      "Save": "Save"
+    },
+    "Vignette": {
+      "OpacitySection": "Vignette Opacity",
+      "HealthLabel": "Low Health",
+      "HealthHint": "Intensity of the red vignette at low health",
+      "StatusLabel": "Active Conditions",
+      "StatusHint": "Intensity of the colored vignette when conditions are active",
+      "PopupLabel": "Damage & Healing Flash",
+      "PopupHint": "Brief screen-edge flash intensity when HP changes",
+      "Save": "Save",
+      "MenuName": "Vignettes",
+      "MenuLabel": "Configure",
+      "MenuHint": "Screen vignettes for health and conditions",
+      "ConfigTitle": "Vignettes"
+    },
+    "transform": {
+      "noToken": "Select a token",
+      "missingUuids": "Specify both actor UUIDs",
+      "actorsNotFound": "Actors not found for the given UUIDs",
+      "wrongToken": "This effect belongs to another token"
+    }
+  }
+}

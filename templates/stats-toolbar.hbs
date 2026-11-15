@@ -1,0 +1,134 @@
+<header class="ss-st-header">
+  <div class="ss-st-controls">
+    <div class="ss-st-seg" role="group" aria-label="{{localize 'showstopper.Stats.Session'}}">
+      <button type="button"
+              class="ss-st-seg__btn{{#if isSession}} active{{/if}}"
+              data-action="setPeriod"
+              data-period="session"
+              aria-pressed="{{#if isSession}}true{{else}}false{{/if}}">
+        <span>{{localize "showstopper.Stats.Session"}}</span>
+        {{#if sessionDuration}}
+          <span class="ss-st-duration">{{sessionDuration}}</span>
+        {{/if}}
+      </button>
+      <button type="button"
+              class="ss-st-seg__btn{{#if isAllTime}} active{{/if}}"
+              data-action="setPeriod"
+              data-period="all"
+              aria-pressed="{{#if isAllTime}}true{{else}}false{{/if}}">
+        <span>{{localize "showstopper.Stats.AllTime"}}</span>
+      </button>
+    </div>
+
+    <div class="ss-st-seg" role="group" aria-label="{{localize 'showstopper.Stats.PlayersOnly'}}">
+      <button type="button"
+              class="ss-st-seg__btn{{#unless pcOnly}} active{{/unless}}"
+              data-action="setFilter"
+              data-filter="all"
+              aria-pressed="{{#unless pcOnly}}true{{else}}false{{/unless}}">
+        <span>{{localize "showstopper.Stats.AllChars"}}</span>
+      </button>
+      <button type="button"
+              class="ss-st-seg__btn{{#if pcOnly}} active{{/if}}"
+              data-action="setFilter"
+              data-filter="pc"
+              aria-pressed="{{#if pcOnly}}true{{else}}false{{/if}}">
+        <i class="fa-solid fa-user" aria-hidden="true"></i>
+        <span>{{localize "showstopper.Stats.PlayersOnly"}}</span>
+      </button>
+    </div>
+
+    <search class="ss-st-search">
+      <i class="fa-solid fa-magnifying-glass ss-st-search__icon" aria-hidden="true"></i>
+      <input type="search"
+             class="ss-st-search__input"
+             name="statsSearch"
+             value="{{searchQuery}}"
+             placeholder="{{localize 'showstopper.Stats.SearchPlaceholder'}}"
+             aria-label="{{localize 'showstopper.Stats.SearchPlaceholder'}}"
+             autocomplete="off">
+      <button type="button"
+              class="ss-st-search__clear"
+              data-action="clearSearch"
+              data-tooltip="showstopper.cut-ins.ui.clearSearch"
+              aria-label="{{localize 'showstopper.cut-ins.ui.clearSearch'}}"
+              {{#unless searchQuery}}hidden{{/unless}}>
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </search>
+
+    <div class="ss-st-actions">
+      {{#if isGM}}
+        <label class="ss-st-toggle" data-tooltip="showstopper.Stats.StatsEnabled.Hint">
+          <input type="checkbox"
+                 class="ss-st-enabled__input"
+                 name="statsEnabled"
+                 {{#if statsEnabled}}checked{{/if}}>
+          <span>{{localize "showstopper.Stats.StatsEnabled.Name"}}</span>
+        </label>
+      {{/if}}
+      <button type="button"
+              class="ss-st-btn ss-st-btn--icon"
+              data-action="exportSummary"
+              data-tooltip="showstopper.Stats.ExportSummary"
+              aria-label="{{localize 'showstopper.Stats.ExportSummary'}}">
+        <i class="fa-solid fa-comment-dots" aria-hidden="true"></i>
+      </button>
+      {{#if isGM}}
+        <button type="button"
+                class="ss-st-btn"
+                data-action="newSession"
+                data-tooltip="showstopper.Stats.ConfirmNewSessionTitle">
+          <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+          <span>{{localize "showstopper.Stats.NewSession"}}</span>
+        </button>
+        <button type="button"
+                class="ss-st-btn ss-st-btn--danger"
+                data-action="resetStats"
+                data-tooltip="showstopper.Stats.ConfirmResetTitle">
+          <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+          <span>{{localize "showstopper.Stats.ResetStats"}}</span>
+        </button>
+      {{/if}}
+    </div>
+  </div>
+
+  <nav class="sheet-tabs tabs ss-st-tabs" role="tablist" aria-label="{{localize 'showstopper.Stats.Title'}}">
+    <button type="button"
+            role="tab"
+            id="ss-st-tab-overview"
+            class="ss-st-tab{{#if isTabOverview}} active{{/if}}"
+            data-action="switchTab"
+            data-tab="overview"
+            aria-selected="{{#if isTabOverview}}true{{else}}false{{/if}}"
+            aria-controls="ss-st-panel-overview"
+            tabindex="{{#if isTabOverview}}0{{else}}-1{{/if}}">
+      <i class="fa-solid fa-table-list" aria-hidden="true"></i>
+      <span>{{localize "showstopper.Stats.Overview"}}</span>
+    </button>
+    <button type="button"
+            role="tab"
+            id="ss-st-tab-characters"
+            class="ss-st-tab{{#if isTabCharacters}} active{{/if}}"
+            data-action="switchTab"
+            data-tab="characters"
+            aria-selected="{{#if isTabCharacters}}true{{else}}false{{/if}}"
+            aria-controls="ss-st-panel-characters"
+            tabindex="{{#if isTabCharacters}}0{{else}}-1{{/if}}">
+      <i class="fa-solid fa-id-card" aria-hidden="true"></i>
+      <span>{{localize "showstopper.Stats.Characters"}}</span>
+    </button>
+    <button type="button"
+            role="tab"
+            id="ss-st-tab-log"
+            class="ss-st-tab{{#if isTabLog}} active{{/if}}"
+            data-action="switchTab"
+            data-tab="log"
+            aria-selected="{{#if isTabLog}}true{{else}}false{{/if}}"
+            aria-controls="ss-st-panel-log"
+            tabindex="{{#if isTabLog}}0{{else}}-1{{/if}}">
+      <i class="fa-solid fa-dice-d20" aria-hidden="true"></i>
+      <span>{{localize "showstopper.Stats.RollLog"}}</span>
+    </button>
+  </nav>
+</header>

@@ -1,0 +1,91 @@
+<div class="showstopper-container">
+  <section class="tab-bar" role="tablist">
+    {{#each tabs}}
+    <button type="button" class="tab-btn {{#if active}}active{{/if}}" role="tab" aria-selected="{{active}}" data-tab="{{id}}" data-action="switchTab" data-tooltip="{{label}}">
+      <i class="{{icon}}" aria-hidden="true"></i>
+      <span>{{label}}</span>
+    </button>
+    {{/each}}
+  </section>
+  <div class="ss-menu-search">
+    <i class="fa-solid fa-magnifying-glass ss-menu-search-icon" aria-hidden="true"></i>
+    <input type="search"
+           id="ss-menu-search-input"
+           class="ss-menu-search-input"
+           placeholder="{{searchPlaceholder}}"
+           aria-label="{{searchPlaceholder}}"
+           autocomplete="off"
+           spellcheck="false"/>
+    <button type="button" class="ss-menu-search-clear" data-action="clearSearch" aria-label="{{clearSearchLabel}}">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+    </button>
+  </div>
+  <section class="content-area">
+    <div class="search-empty hidden">
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <p>{{searchNoResults}}</p>
+      {{!-- Populated by #applySearch: shortcut buttons to tabs with matches --}}
+      <div class="search-empty-tabs"></div>
+    </div>
+    {{#each sections}}
+    <div class="effect-list {{#if active}}active{{/if}}" data-tab="{{id}}" role="tabpanel" tabindex="0">
+      {{#if needsTarget}}
+      <div class="needs-target-hint">
+        <i class="fa-solid fa-bullseye" aria-hidden="true"></i>
+        <span>{{targetHint}}</span>
+      </div>
+      {{/if}}
+      {{#each cards}}
+      <article class="effect-card {{#unless isAvailable}}disabled{{/unless}}" data-effect-id="{{id}}">
+        <div class="effect-icon"><i class="{{icon}}" aria-hidden="true"></i></div>
+        <div class="effect-info">
+          <h4 class="effect-name">{{name}}</h4>
+          <p class="effect-description">{{description}}</p>
+          {{#if hint}}
+          <p class="effect-hint"><i class="fa-solid fa-lightbulb" aria-hidden="true"></i> {{hint}}</p>
+          {{/if}}
+        </div>
+        <div class="effect-actions">
+          <div class="effect-side-btns">
+            <button type="button"
+                    class="effect-preview-btn"
+                    data-action="previewEffect"
+                    data-effect-id="{{id}}"
+                    data-tooltip="{{../../previewLabel}}"
+                    aria-label="{{../../previewLabel}}"
+                    {{#unless isAvailable}}disabled{{/unless}}>
+              <i class="fa-solid fa-eye" aria-hidden="true"></i>
+            </button>
+            {{#if hasSettings}}
+            <button type="button"
+                    class="effect-settings-btn"
+                    data-action="openSettings"
+                    data-effect-id="{{id}}"
+                    data-tooltip="{{../../settingsLabel}}"
+                    aria-label="{{../../settingsLabel}}">
+              <i class="fa-solid fa-gear" aria-hidden="true"></i>
+            </button>
+            {{/if}}
+          </div>
+          <button type="button"
+                  class="effect-play-btn"
+                  data-action="playEffect"
+                  data-effect-id="{{id}}"
+                  data-tooltip="{{../../playLabel}}"
+                  aria-label="{{../../playLabel}}"
+                  {{#unless isAvailable}}disabled{{/unless}}>
+            <i class="fa-solid fa-play" aria-hidden="true"></i>
+          </button>
+        </div>
+      </article>
+      {{/each}}
+      {{#unless hasCards}}
+      <div class="empty-state">
+        <i class="fa-solid fa-inbox" aria-hidden="true"></i>
+        <p>{{emptyText}}</p>
+      </div>
+      {{/unless}}
+    </div>
+    {{/each}}
+  </section>
+</div>
