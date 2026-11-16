@@ -3518,6 +3518,31 @@ if (hasPlus) {
       }
       const plungeCompletedCleanly = !fallTok._ssFallPlunge && !fallTok._ssJumpState && fallTok._ssLastElevation === 0 && fallTickFns.length === 0;
 
+      // Regression: lowering a falling token's elevation to 0 ft while `falling` status removal
+      // is still deferred until plunge end must NOT bounce back into the falling loop or trigger
+      // a second plunge when `deleteActiveEffect('falling')` arrives afterwards.
+      fallTok.document.elevation = 20;
+      fallTok.document._source = { elevation: 20, movementAction: 'walk' };
+      fallTok.document.movementAction = 'walk';
+      fallTok.actor.statuses.add('falling');
+      JA.syncTokenFlyHover(fallTok, { elevation: 20 }, {});
+      for (let i = 0; i < 8; i++) {
+        for (const fn of [...fallTickFns]) fn();
+      }
+      const inLoopBeforeDrop = Boolean(fallTok._ssWasFalling);
+      fallTok.document.elevation = 0;
+      fallTok.document._source = { elevation: 0, movementAction: 'walk' };
+      JA.syncTokenFlyHover(fallTok, { elevation: 0 }, {});
+      const plunge1Started = fallTok._ssFallPlunge?.fromElevation === 20 && fallTok._ssFallPlunge?.toElevation === 0;
+      for (let i = 0; i < 280; i++) {
+        for (const fn of [...fallTickFns]) fn();
+      }
+      const landedGroundedWhileFallingPending = !fallTok._ssFallPlunge && !fallTok._ssWasFalling && !fallTok._ssJumpState && fallTickFns.length === 0;
+      fallTok.actor.statuses.delete('falling');
+      JA.syncTokenFlyHover(fallTok);
+      const noSecondPlungeOnStatusDelete = !fallTok._ssFallPlunge && !fallTok._ssJumpState && fallTickFns.length === 0;
+      const noDuplicatePlungeOnDelayedDelete = inLoopBeforeDrop && plunge1Started && landedGroundedWhileFallingPending && noSecondPlungeOnStatusDelete;
+
       // Verify automatic flight activation when actor sheet fly speed > 1 ft (even with `movementAction === 'walk'`)
       const sheetFlyTok = new FakeTokenClass();
       sheetFlyTok.document.elevation = 15;
@@ -3545,7 +3570,7 @@ if (hasPlus) {
         plungeEnd.scaleX === 1 && plungeEnd.scaleY === 1 && plungeEnd.offsetY === 0 && plungeEnd.tiltAngle === 0 &&
         syncedFallingLoop && inFallingLoopScaleY > 1.03 && inFallingLoopScaleY < 1.09 &&
         dragPreviewSynced && wasdDidNotDisturbPhase && dragDidNotDisturbPhase && plungeSurvivedWasdAndDrag &&
-        plungeStarted && plungeSurvivedStatusDelete && plungeCompletedCleanly,
+        plungeStarted && plungeSurvivedStatusDelete && plungeCompletedCleanly && noDuplicatePlungeOnDelayedDelete,
         `falling-anim: статус Falling ослаблен и изолирован от WASD/drag/Q-в-воздухе (tilt=${fallLoopMid.tiltAngle.toFixed(1)}°, scaleY=${fallLoopMid.scaleY.toFixed(2)}, sheetFly>1ft=ok), а приземление ведёт пике (stretch=${plungeAir.scaleY.toFixed(2)}x) и удар (squash=${plungeImpact.scaleX.toFixed(2)}x/${plungeImpact.scaleY.toFixed(2)}x)`
       );
 

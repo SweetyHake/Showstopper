@@ -4761,6 +4761,7 @@ export function clearJumpStateForToken(token: any, { destroyShadow = false }: { 
   token._ssWalkCruiseSpeed = 0;
   if (destroyShadow) {
     token._ssPerspState = null;
+    token._ssLandedPlungeElev = undefined;
     _perspectiveTokens.delete(token);
     if (token.mesh) _setObjectDofBlur(token.mesh, 0, false);
     _destroyJumpShadow(token);
@@ -4947,7 +4948,8 @@ function _tickHoverTokens() {
       if (u >= 1) {
         token._ssFallPlunge = null;
         token._ssVisualElevation = rawElev;
-        const stillFalling = isTokenFalling(token) && !token.document?.hidden;
+        const landedAtSupport = _isLandedPlungeSuppressed(token, rawElev);
+        const stillFalling = !landedAtSupport && isTokenFalling(token) && !token.document?.hidden;
         const stillFlying = !stillFalling && isTokenInFlyMode(token) && !token.document?.hidden;
         if (stillFalling || stillFlying) {
           token._ssHoverBlend = 1;
@@ -4955,10 +4957,14 @@ function _tickHoverTokens() {
           token._ssWasFalling = stillFalling;
         } else {
           const savedElev = rawElev;
+          const keepSuppressed = landedAtSupport && isTokenFalling(token);
           clearJumpStateForToken(token);
           token._ssLastElevation = savedElev;
           token._ssVisualElevation = savedElev;
           token._ssTargetElevation = savedElev;
+          if (!keepSuppressed && !isTokenFalling(token)) {
+            token._ssLandedPlungeElev = undefined;
+          }
           continue;
         }
       } else {
@@ -5063,7 +5069,11 @@ function _tickHoverTokens() {
     }
 
     // 2b) Continuous free-fall animation while the `Falling` status (`statusId: "falling"`) is active
-    const isFallingNow = getTokenMovementSetting('fall') && isTokenFalling(token) && !token.document?.hidden;
+    const landedSuppressFall = _isLandedPlungeSuppressed(token, rawElev);
+    if (landedSuppressFall && !isTokenFalling(token)) {
+      token._ssLandedPlungeElev = undefined;
+    }
+    const isFallingNow = !landedSuppressFall && getTokenMovementSetting('fall') && isTokenFalling(token) && !token.document?.hidden;
     if (isFallingNow) {
       token._ssWasFalling = true;
       token._ssHoverTarget = 1;
@@ -5181,6 +5191,17 @@ function _stopHoverTicker() {
 }
 
 /**
+ * Prevent a landed fall plunge from bouncing back into the continuous falling loop
+ * while `dnd5e`'s delayed `deleteActiveEffect('falling')` is still pending on the actor.
+ */
+function _isLandedPlungeSuppressed(token: any, elev: number, supported?: boolean): boolean {
+  const landedElev = token?._ssLandedPlungeElev;
+  if (!Number.isFinite(landedElev)) return false;
+  if (Math.abs(elev - Number(landedElev)) > 0.05) return false;
+  return supported !== undefined ? supported : _isSupportedAtElevation(token, elev);
+}
+
+/**
  * Synchronize a token's `Idle Hover`, `Falling`, vertical air-jump (`_ssAirJump`), and takeoff/landing state.
  * Takeoff (`blend: 0 -> 1`) plays ONLY when lifting off from support (`prevElev <= 0` -> `curElev > 0`),
  * and landing (`blend: 1 -> 0`) plays ONLY when touching down (`curElev <= 0`) or leaving `fly` mode.
@@ -5207,13 +5228,28 @@ export function syncTokenFlyHover(token: any, changed?: any, options?: any): boo
   const fallAnimEnabled = getTokenMovementSetting('fall');
   const jumpAnimEnabled = getTokenMovementSetting('jump');
   const isFallingLogical = isTokenFalling(token) && !token.document?.hidden;
-  const isFallingNow = fallAnimEnabled && isFallingLogical;
   const wasFalling = Boolean(token._ssWasFalling);
   const dndFallDist = Number(options?.dnd5e?.fall?.distance) || 0;
   const isExplicitFallOpt = options?.fall === true || dndFallDist > 0 || isFallActionName(options?.action);
   const elevDrop = Math.max(0, prevElev - curElev);
   const elevGain = Math.max(0, curElev - prevElev);
   const hasLandingSurface = _isSupportedAtElevation(token, curElev, undefined, undefined, curLevel);
+  if (Number.isFinite(token._ssLandedPlungeElev)) {
+    if (
+      !hasLandingSurface ||
+      Math.abs(curElev - Number(token._ssLandedPlungeElev)) > 0.05 ||
+      elevGain > 0.5 ||
+      elevDrop > 0.5
+    ) {
+      token._ssLandedPlungeElev = undefined;
+    }
+  }
+  const suppressStaleFalling = _isLandedPlungeSuppressed(token, curElev, hasLandingSurface);
+  if (suppressStaleFalling && !isFallingLogical) {
+    token._ssLandedPlungeElev = undefined;
+  }
+  const effectiveFallingLogical = isFallingLogical && !suppressStaleFalling;
+  const isFallingNow = fallAnimEnabled && effectiveFallingLogical;
 
   // Clear `_ssPrevAnimElevation` and update `_ssLastElevation` / `_ssLastLevel` when processing an actual state update
   if (!changed || ('elevation' in changed) || !hadLastElev) {
@@ -5271,6 +5307,9 @@ export function syncTokenFlyHover(token: any, changed?: any, options?: any): boo
     };
     token._ssAirJump = null;
     token._ssWasFalling = isFallingNow;
+    if (hasLandingSurface || isExplicitFallOpt) {
+      token._ssLandedPlungeElev = toElevation;
+    }
     token._ssVisualElevation = fromElevation;
     token._ssVerticalFlight = null;
     token._ssTargetElevation = toElevation;
@@ -5439,7 +5478,7 @@ export function syncTokenFlyHover(token: any, changed?: any, options?: any): boo
 
   // 2) When the `Falling` status (`statusId: "falling"`) is active, engage the continuous falling loop
   //    IMMEDIATELY as soon as the effect appears (even if the token is finishing a `walk` step off another token or ledge!)
-  if (isFallingLogical && !fallAnimEnabled) {
+  if (effectiveFallingLogical && !fallAnimEnabled) {
     token._ssWasFalling = false;
     if (_hoveringTokens.has(token) || token._ssJumpState) {
       const savedElev = token._ssLastElevation;
@@ -6943,27 +6982,33 @@ export function installJumpAnimationPatch(TokenClass?: any) {
   return patchedAny;
 }
 
-function _syncActorOrTokenFallingState(target: any) {
-  if (!target) return;
-  try {
-    // 1) Direct token reference (synthetic unlinked Actor `target.token.object` or `ActorDelta.parent.object`)
-    const directTokenObj = target.object
-      ?? target.token?.object
-      ?? (target.documentName === 'ActorDelta' ? target.parent?.object : null)
-      ?? (target.mesh ? target : null);
-    if (directTokenObj && !directTokenObj.destroyed) {
-      syncTokenFlyHover(directTokenObj);
-      return;
+function _resolveTokensForSyncTarget(target: any): any[] {
+  if (!target) return [];
+  const directTokenObj = target.object
+    ?? target.token?.object
+    ?? (target.documentName === 'ActorDelta' ? target.parent?.object : null)
+    ?? (target.mesh ? target : null);
+  if (directTokenObj && !directTokenObj.destroyed) {
+    return [directTokenObj];
+  }
+  const placeables: any[] | undefined = (globalThis as any).canvas?.tokens?.placeables;
+  if (!Array.isArray(placeables)) return [];
+  const targetActor = target.actor ?? (target.documentName === 'Actor' ? target : target.parent);
+  if (!targetActor) return [];
+  const matched: any[] = [];
+  for (const tok of placeables) {
+    if (!tok || tok.destroyed) continue;
+    if (tok.actor === targetActor || tok.actor?.id === targetActor.id) {
+      matched.push(tok);
     }
-    // 2) Linked Actor — synchronize all of its tokens on the active scene
-    const placeables: any[] | undefined = (globalThis as any).canvas?.tokens?.placeables;
-    if (!Array.isArray(placeables)) return;
-    const targetActor = target.actor ?? (target.documentName === 'Actor' ? target : target.parent);
-    for (const tok of placeables) {
-      if (!tok || tok.destroyed) continue;
-      if (targetActor && (tok.actor === targetActor || tok.actor?.id === targetActor.id)) {
-        syncTokenFlyHover(tok);
-      }
+  }
+  return matched;
+}
+
+function _syncActorOrTokenFallingState(target: any) {
+  try {
+    for (const tok of _resolveTokensForSyncTarget(target)) {
+      syncTokenFlyHover(tok);
     }
   } catch { /* ignore */ }
 }
@@ -7363,11 +7408,20 @@ if (typeof Hooks !== 'undefined') {
     syncElevationPerspective();
   });
 
-  Hooks.on('applyTokenStatusEffect', (token: any) => {
+  Hooks.on('applyTokenStatusEffect', (token: any, statusId: any, active: any) => {
+    if (token && statusId === 'falling' && active !== false && !token._ssFallPlunge) {
+      token._ssLandedPlungeElev = undefined;
+    }
     if (token) syncTokenFlyHover(token);
   });
 
   Hooks.on('createActiveEffect', (effect: any) => {
+    const isFallingEffect = Boolean(effect?.statuses?.has?.('falling') || effect?._id === 'dnd5efalling0000');
+    if (isFallingEffect) {
+      for (const tok of _resolveTokensForSyncTarget(effect?.parent)) {
+        if (!tok._ssFallPlunge) tok._ssLandedPlungeElev = undefined;
+      }
+    }
     _syncActorOrTokenFallingState(effect?.parent);
   });
 
