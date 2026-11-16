@@ -2,7 +2,7 @@
   "id": "showstopper",
   "title": "Showstopper",
   "description": "Extensible cinematic framework (introductions, openings, endings, finishers), token status shaders, dynamic blood & brush, player portraits, screen vignette, damage numbers, combat animations, and roll statistics for Foundry VTT v14.",
-  "version": "14.4.2",
+  "version": "14.4.3",
   "compatibility": {
     "minimum": "14",
     "verified": "14",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 14.4.3
+
+- Add Automated Animations sync setting (`aaSync`) to align melee lunges, ranged shots, and target reactions with AA workflows
+- Defer attack animations until damage roll when Automated Animations "Play on Damage" is enabled
+- Avoid duplicate VFX, sound effects, screen shake, and token motion when handled by Automated Animations
+
 ## 14.4.2
 
 - Add noticeable 360° 3D camera parallax for airborne tokens starting from low elevations

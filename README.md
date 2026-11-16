@@ -3,7 +3,7 @@
 Combat animations, dynamic blood, 2.5D token movement, WebGL status shaders, player portraits, and roll statistics for Foundry VTT v14.
 
 [![Foundry VTT](https://img.shields.io/badge/Foundry%20VTT-v14-orange.svg)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-14.4.2-blue.svg)](https://github.com/SweetyHake/Showstopper/releases/latest)
+[![Version](https://img.shields.io/badge/Version-14.4.3-blue.svg)](https://github.com/SweetyHake/Showstopper/releases/latest)
 [![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
 
 ![Combat & Blood Demo](screenshots/combat-blood-demo.webp)
