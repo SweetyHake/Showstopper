@@ -5,10 +5,15 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
+import posixpath
+import re
+from pathlib import Path, PurePosixPath
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+
+CSS_IMPORT_RE = re.compile(r"""@import\s+(?:url\(\s*)?['"]?([^'"\)\s;]+)""")
+ESM_IMPORT_RE = re.compile(r"""(?:import|export)\s+(?:[^'"]*?\s+from\s+)?['"](\.\.?/[^'"]+)['"]""")
 
 ROOT_FILES = [
     "module.json",
@@ -33,11 +38,47 @@ EXCLUDED_SUFFIXES = (".mts", ".ts", ".map")
 def should_include(rel_posix: str) -> bool:
     parts = rel_posix.split("/")
     name = parts[-1]
-    if any(p.startswith(".") or p.startswith("_") for p in parts):
+    if any(p.startswith(".") for p in parts):
+        return False
+    # Dev harnesses (`_smoke.mjs`, `_bench.mjs`, `_preview.html`, ...) live only under `scripts/`;
+    # CSS partials such as `styles/app/_variables.css` MUST stay in the release archive.
+    if parts[0] == "scripts" and any(p.startswith("_") for p in parts[1:]):
         return False
     if name.endswith(EXCLUDED_SUFFIXES):
         return False
     return True
+
+
+def validate_relative_imports(
+    entries: list[tuple[Path, str]],
+    archived_set: set[str],
+    pkg_label: str,
+) -> None:
+    missing: list[str] = []
+    for full, rel in entries:
+        if rel.endswith(".css"):
+            text = full.read_text(encoding="utf-8", errors="ignore")
+            for raw_ref in CSS_IMPORT_RE.findall(text):
+                if raw_ref.startswith(("http://", "https://", "data:", "/")):
+                    continue
+                clean_ref = raw_ref.split("#", 1)[0].split("?", 1)[0]
+                if not clean_ref:
+                    continue
+                target = posixpath.normpath((PurePosixPath(rel).parent / clean_ref).as_posix())
+                if target not in archived_set:
+                    missing.append(f"{rel} -> {raw_ref} (resolved: {target})")
+        elif rel.endswith((".mjs", ".js")):
+            text = full.read_text(encoding="utf-8", errors="ignore")
+            for raw_ref in ESM_IMPORT_RE.findall(text):
+                clean_ref = raw_ref.split("#", 1)[0].split("?", 1)[0]
+                if not clean_ref:
+                    continue
+                target = posixpath.normpath((PurePosixPath(rel).parent / clean_ref).as_posix())
+                if target not in archived_set:
+                    missing.append(f"{rel} -> {raw_ref} (resolved: {target})")
+
+    if missing:
+        raise RuntimeError(f"[{pkg_label}] Relative imports missing from archive: {missing}")
 
 
 def build_package_zip(pkg_dir: Path, out_zip: Path) -> None:
@@ -58,16 +99,18 @@ def build_package_zip(pkg_dir: Path, out_zip: Path) -> None:
         dpath = pkg_dir / dname
         if not dpath.is_dir():
             continue
+        skip_prefixes = (".", "_") if dname == "scripts" else (".",)
         for r, dirs, files in os.walk(dpath):
-            dirs[:] = sorted(d for d in dirs if not d.startswith((".", "_")))
+            dirs[:] = sorted(d for d in dirs if not d.startswith(skip_prefixes))
             for f in sorted(files):
                 full = Path(r) / f
                 rel = full.relative_to(pkg_dir).as_posix()
                 if should_include(rel):
                     entries.append((full, rel))
 
-    # Validate manifest references before writing archive
+    # Validate manifest references and internal relative imports before writing archive
     manifest = json.loads((pkg_dir / "module.json").read_text(encoding="utf-8"))
+    pkg_label = manifest.get("id", pkg_dir.name)
     archived_set = {rel for _, rel in entries}
     required_refs: list[str] = []
     required_refs.extend(manifest.get("esmodules", []))
@@ -78,7 +121,9 @@ def build_package_zip(pkg_dir: Path, out_zip: Path) -> None:
 
     missing = [ref for ref in required_refs if ref not in archived_set]
     if missing:
-        raise RuntimeError(f"[{manifest.get('id', pkg_dir.name)}] Manifest references missing from archive: {missing}")
+        raise RuntimeError(f"[{pkg_label}] Manifest references missing from archive: {missing}")
+
+    validate_relative_imports(entries, archived_set, pkg_label)
 
     if out_zip.exists():
         out_zip.unlink()
