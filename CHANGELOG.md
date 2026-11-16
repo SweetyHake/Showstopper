@@ -1,5 +1,10 @@
 # Changelog
 
+## 14.4.2
+
+- Add noticeable 360° 3D camera parallax for airborne tokens starting from low elevations
+- Keep low-altitude tokens crisp (no Depth-of-Field blur up to 20 ft) and soften high-altitude blur
+
 ## 14.4.1
 
 - Fix duplicate fall plunge animation when lowering elevation to 0
