@@ -17,7 +17,7 @@ import { mixHex } from './colors.mjs';
 import { spawnStepPuff } from './particles.mjs';
 import { trampleSnowStains, absorbBloodIntoSnow, snowLevelAt, snowLevelFromNear, SNOW_LEVEL, SNOW_COLOR, SNOW_SHADOW_COLOR } from './snow-bridge.mjs';
 import { resolveTokenFootprintStyle, footprintSubtypeOfStyle } from './token-color.mjs';
-import { computeJumpDurationMs, JUMP_LAUNCH_T, JUMP_LAND_T } from '../animations/token-movement.mjs';
+import { computeJumpDurationMs, computeWalkDurationMs, getTokenMovementSetting, JUMP_LAUNCH_T, JUMP_LAND_T } from '../animations/token-movement.mjs';
 
 const TRAIL_COOLDOWN_MS = 350;
 const DEFAULT_MOVE_SPACES_PER_SEC = 6; // standard Foundry token movement animation speed (grid spaces/s)
@@ -207,10 +207,16 @@ function _isTeleportMove(doc: any, changes: any = {}, options: any = {}) {
  * returns the total token movement duration (ms) so each step and snow compression
  * beneath it fires progressively right as the token passes through that point.
  */
-function _smartMoveDurationMs(dist: number, grid: number, options: any = {}) {
-  if (!dist || !(grid > 0)) return 0;
+function _smartMoveDurationMs(dist: number, grid: number, options: any = {}, doc?: any) {
+  if (!dist || !(grid > 0) || options?.animate === false) return 0;
   const explicitDuration = Number(options?.animation?.duration);
   if (Number.isFinite(explicitDuration) && explicitDuration >= 0) return explicitDuration;
+  try {
+    if (typeof getTokenMovementSetting === 'function' && getTokenMovementSetting('walk')) {
+      const walkMs = computeWalkDurationMs(dist, grid, undefined, { token: doc?.object ?? doc });
+      if (Number.isFinite(walkMs) && walkMs > 0) return Math.round(walkMs);
+    }
+  } catch { /* fallback below */ }
   const gridsMoved = dist / grid;
   const movementSpeed = Number(options?.animation?.movementSpeed) || DEFAULT_MOVE_SPACES_PER_SEC;
   return Math.round((gridsMoved / Math.max(1, movementSpeed)) * 1000);
@@ -219,12 +225,12 @@ function _smartMoveDurationMs(dist: number, grid: number, options: any = {}) {
 /** Reusable PRNG: minting left/right foot seeds avoids allocating Rng per probe (~2/footprint). */
 const _sideRng = new Rng(0);
 
-/** Mint a seed whose atlas variant matches the requested foot (0/2 = left, 1/3 = right). */
-function _mintSeedForSide(left) {
-  for (let i = 0; i < 40; i++) {
+/** Mint a seed whose atlas variant matches the requested foot & wear state (0/1 = wet, 2/3 = depleted). */
+function _mintSeedForSide(left, worn = false) {
+  const target = (worn ? 2 : 0) + (left ? 0 : 1);
+  for (let i = 0; i < 64; i++) {
     const s = mintSeed();
-    const v = _sideRng.reset(s).int(4);
-    if ((v === 0 || v === 2) === left) return s;
+    if (_sideRng.reset(s).int(4) === target) return s;
   }
   return mintSeed();
 }
@@ -246,7 +252,32 @@ function _filterNearLevel(near, levelId) {
   return _nearLevelScratch;
 }
 
-function _pickGround(list, tsize, surface, cx = 0, cy = 0, maxR = Infinity, levelId = null) {
+function _hasCandidateInNear(list, tsize) {
+  for (let i = 0; i < list.length; i++) {
+    const st = list[i];
+    if (!st) continue;
+    if (st.m === 2) {
+      if (st.t === STAIN.FOOTPRINT || st.c === SNOW_SHADOW_COLOR) continue;
+      if (st.t === STAIN.SMEAR && !(st.lv >= SNOW_LEVEL.DRIFT)) continue;
+    } else if (
+      st.t === STAIN.FOOTPRINT ||
+      st.t === STAIN.DROPLETS ||
+      st.t === STAIN.DRIP ||
+      st.t === STAIN.HANDPRINT
+    ) {
+      continue;
+    }
+    if ((Number(st.a) || 0) < 0.3) continue;
+    if (st.m !== 2) {
+      const minPoolS = st.t === STAIN.SPLASH ? tsize * 0.75 : tsize * 0.52;
+      if ((Number(st.s) || 0) < minPoolS) continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+function _pickGround(list, tsize, surface, cx = 0, cy = 0, maxR = Infinity, levelId = null, hasDirtySoles = false) {
   let any = null, anyScore = 0;        // best candidate when snow is allowed
   let bloodOnly = null, bloodScore = 0; // best candidate excluding snow
   let sawSnow = false;
@@ -260,16 +291,27 @@ function _pickGround(list, tsize, surface, cx = 0, cy = 0, maxR = Infinity, leve
       if (st.c === SNOW_SHADOW_COLOR) continue;
       // A carved snow rut/trench (SMEAR without lv >= 3) is not treated as fresh snow
       if (st.t === STAIN.SMEAR && !(st.lv >= SNOW_LEVEL.DRIFT)) continue;
-    } else if (st.t === STAIN.FOOTPRINT) {
+    } else if (
+      st.t === STAIN.FOOTPRINT ||
+      st.t === STAIN.DROPLETS ||
+      st.t === STAIN.DRIP ||
+      st.t === STAIN.HANDPRINT
+    ) {
       continue;
     }
     if (!elevationMatches(st.e, surface)) continue;
     const a = Number(st.a) || 0;
     if (a < 0.3) continue;
     const s = Number(st.s) || 0;
+    if (st.m !== 2) {
+      const minPoolS = st.t === STAIN.SPLASH ? tsize * 0.75 : tsize * 0.52;
+      if (s < minPoolS) continue;
+    }
     if (checkR) {
       const dx = st.x - cx, dy = st.y - cy;
-      const rr = maxR + s * 0.35;
+      const rr = st.m === 2
+        ? maxR + s * 0.35
+        : (hasDirtySoles ? Math.min(maxR, tsize * 0.12) + s * 0.36 : tsize * 0.12 + s * 0.34);
       if (dx * dx + dy * dy > rr * rr) continue;
     }
     const score = a * Math.min(1, s / tsize);
@@ -523,7 +565,7 @@ export class TrailEngine {
     const puffsOn = settingGet('bloodStepPuffs', true);
     const arrivalDelayMs = (crossLevel || options?.animate === false)
       ? 0
-      : Math.min(180, _smartMoveDurationMs(dist, grid, options));
+      : Math.min(180, _smartMoveDurationMs(dist, grid, options, doc));
     const dedupR = Math.max(12, tsize * 0.22);
 
     const stains = [];
@@ -676,7 +718,7 @@ export class TrailEngine {
 
     if (changes?.level && doc?.level && changes.level !== doc.level) return;
     const tLevel = doc?.level ?? currentLevelId();
-    const moveDurationMs = _smartMoveDurationMs(dist, grid, options);
+    const moveDurationMs = _smartMoveDurationMs(dist, grid, options, doc);
     const rot = Math.atan2(dy, dx);
     const n = Math.min(72, Math.max(1, Math.round(dist / step)));
     const tElev = elevOf(doc);
@@ -812,7 +854,7 @@ export class TrailEngine {
     // soles, footprints are impossible
     if (!store.stains.length && !soles) return;
 
-    const moveDurationMs = _smartMoveDurationMs(dist, grid, options);
+    const moveDurationMs = _smartMoveDurationMs(dist, grid, options, doc);
     const rot = Math.atan2(dy, dx);
     const ux = Math.cos(rot), uy = Math.sin(rot); // forward along movement
     const nx = -uy, ny = ux;                      // lateral normal (left/right)
@@ -826,6 +868,7 @@ export class TrailEngine {
     const tElev = elevOf(doc); // surface ceiling: token cannot stand on a surface above its elevation
     const pickR = tsize * 0.45;
     const queryR = Math.max(pickR, grid * 0.55);
+    const wt = Math.round(worldTime());
 
     for (let i = 1; i <= n; i++) {
       const f = i / (n + 0.5);
@@ -835,11 +878,12 @@ export class TrailEngine {
       side = -side;
 
       // CHEAP check first: a single spatial-index queryCircle (radius covers both pickR and grid * 0.55 for snowLevelFromNear).
-      // Pixel-level surfaceAt is the most expensive part of a step, and with no candidates underfoot
+      // Pixel-level surfaceAt is the most expensive part of a step, and with no valid pool/snow candidates underfoot
       // plus clean soles, no footprint can be produced
       const near = store.queryCircle(sx, sy, queryR, _nearScratch);
       const soleWear = soles && soles.steps > 0;
       if (!near.length && !soleWear) continue;
+      if (!soleWear && !_hasCandidateInNear(near, tsize)) continue;
 
       // step surface: tile beneath the point (at or below the token) or the floor —
       // footprints are placed ON it (and stick to it), even if blood "falls" from token height
@@ -851,7 +895,7 @@ export class TrailEngine {
       const activeLvl = surf.lvl ?? tLevel;
       // single pass over `near` yields both the best stain (snow allowed/disallowed) and
       // `sawSnow` — gating snowLevelFromNear without a second queryCircle!
-      const picked = _pickGround(near, tsize, surface, sx, sy, pickR, activeLvl);
+      const picked = _pickGround(near, tsize, surface, sx, sy, pickR, activeLvl, Boolean(soleWear));
       const rawSnowLv = picked.sawSnow
         ? snowLevelFromNear(_filterNearLevel(near, activeLvl), sx, sy, grid, surface)
         : SNOW_LEVEL.NONE;
@@ -864,6 +908,7 @@ export class TrailEngine {
       let sole;
       let fresh = false;
       let bloodySnowColor = null;
+      let stepWear = 1;
       if (ground) {
         const m = Number(ground.m) || 0;
         const steps = 4 + Math.min(6, Math.round((ground.s / tsize) * 3)); // larger pools coat soles longer
@@ -981,6 +1026,7 @@ export class TrailEngine {
           fresh = true;
         }
       } else if (soles && soles.steps > 0 && soles.m !== 2) {
+        stepWear = soles.steps / Math.max(1, soles.total);
         soles.steps--;
         sole = soles;
         if (!soles.steps) this._soles.delete(doc.id); // soles worn clean
@@ -988,7 +1034,7 @@ export class TrailEngine {
         continue; // clean soles (or snow mode with no snow underfoot) — no print
       }
 
-      const wear = sole.steps / sole.total;
+      const fadeCurve = Math.pow(stepWear, 1.35);
       // For slithering creatures/oozes/snakes/swarms (`isSlither`), trail a wavy SMEAR instead of boot prints
       if (isSlither) {
         const wave = Math.sin(i * 1.25) * stride * 0.14;
@@ -998,23 +1044,36 @@ export class TrailEngine {
           t: STAIN.SMEAR,
           x: sxWave,
           y: syWave,
-          s: tsize * 0.52 * (0.94 + Math.random() * 0.12),
+          s: tsize * 0.52 * (0.82 + 0.18 * stepWear) * (0.94 + Math.random() * 0.12),
           r: rot + Math.cos(i * 1.25) * 0.16,
-          a: fresh ? Math.min(0.82, 0.52 + Math.random() * 0.14) : Math.max(0.14, 0.46 * wear),
+          a: fresh ? (0.78 + Math.random() * 0.10) : Math.max(0.10, 0.08 + 0.74 * fadeCurve),
           c: fresh ? shadeHex8(sole.c, -0.22) : sole.c,
           m: sole.m,
           e: surface,
+          ...(sole.m !== 2 ? { T: wt } : {}),
+          ...(stepDelayMs > 0 ? { d: stepDelayMs } : {}),
           ...(surf.tid ? { tid: surf.tid } : {}),
           ...(activeLvl ? { lvl: activeLvl } : {})
         }));
         continue;
       }
 
-      const latK = fpSub === 3 ? 0.22 : (fpSub === 1 || fpSub === 2 ? 0.32 : 0.3);
-      const sizeK = fpSub === 3 ? 0.40 : (fpSub === 1 ? 0.42 : (fpSub === 2 ? 0.48 : 0.46));
+      const latK = fpSub === 3 ? 0.22 : (fpSub === 1 || fpSub === 2 ? 0.32 : 0.06);
+      const sizeK = fpSub === 3 ? 0.40 : (fpSub === 1 ? 0.42 : (fpSub === 2 ? 0.48 : 0.62));
+      if (!soleWear && fresh && sole.m !== 2 && ground) {
+        const offCur = stride * latK * side;
+        const d2Cur = (sx + nx * offCur - ground.x) ** 2 + (sy + ny * offCur - ground.y) ** 2;
+        const offOpp = stride * latK * (-side);
+        const d2Opp = (sx + nx * offOpp - ground.x) ** 2 + (sy + ny * offOpp - ground.y) ** 2;
+        const inFootR = (Number(ground.s) || 0) * 0.30;
+        if (d2Cur > inFootR * inFootR && d2Opp < d2Cur) {
+          side = -side;
+        }
+      }
       const off = stride * latK * side;
-      const fx = sx + nx * off + (Math.random() - 0.5) * grid * 0.06;
-      const fy = sy + ny * off + (Math.random() - 0.5) * grid * 0.06;
+      const jit = fpSub === 0 ? grid * 0.14 : grid * 0.06;
+      const fx = sx + nx * off + (Math.random() - 0.5) * jit;
+      const fy = sy + ny * off + (Math.random() - 0.5) * jit;
       // For a snow boot print: verify that snow lies directly beneath the boot `(fx, fy)`
       // and that no snow print is already stamped right there (avoiding overstacking).
       // Candidates come from the ALREADY queried `near` in a single pass: the circle
@@ -1054,13 +1113,17 @@ export class TrailEngine {
         if (stackedPrints >= 3) continue;
       }
 
+      const wearSizeMul = sole.m === 2 ? 1 : (0.60 + 0.40 * stepWear);
+      const useWornVariant = !fresh && sole.m !== 2 && stepWear <= 0.52;
       stains.push(store.createStain({
         t: STAIN.FOOTPRINT,
         x: fx,
         y: fy,
-        s: tsize * sizeK * (0.95 + Math.random() * 0.1),
-        r: rot + (Math.random() - 0.5) * 0.2, // toe points along movement (+X in atlas)
-        a: fresh ? Math.min(0.85, 0.55 + Math.random() * 0.15) : Math.max(0.14, 0.5 * wear),
+        s: tsize * sizeK * wearSizeMul * (0.95 + Math.random() * 0.1),
+        r: rot + (Math.random() - 0.5) * 0.36, // subtle scatter around movement direction
+        a: sole.m === 2
+          ? (fresh ? Math.min(0.85, 0.55 + Math.random() * 0.15) : Math.max(0.14, 0.5 * stepWear))
+          : (fresh ? (0.82 + Math.random() * 0.10) : Math.max(0.09, 0.06 + 0.84 * fadeCurve)),
         // fresh bloody footprint is DARKER than the stain (pressed, coagulated
         // blood) — otherwise red-on-red is unreadable; prints tracked onto
         // clean ground keep the pure blood color
@@ -1068,11 +1131,12 @@ export class TrailEngine {
           : sole.m === 2 ? shadeHex8(sole.c, -0.42) // print in snow — shadow shade
             : fresh ? shadeHex8(sole.c, -0.22)      // bloody print on blood — darker
               : sole.c,                             // bloody print on clean floor — base color
-        seed: _mintSeedForSide(side < 0),
+        seed: _mintSeedForSide(side < 0, useWornVariant),
         m: sole.m,
         e: surface, // print lives on the step surface (when fresh: blood.e ≈ surface)
+        ...(sole.m !== 2 ? { T: wt } : {}),
         ...(fpSub > 0 ? { fp: fpSub } : {}),
-        ...(sole.m === 2 && stepDelayMs > 0 ? { d: stepDelayMs } : {}),
+        ...(stepDelayMs > 0 ? { d: stepDelayMs } : {}),
         ...(surf.tid ? { tid: surf.tid } : {}),
         ...(activeLvl ? { lvl: activeLvl } : {})
       }));
@@ -1134,6 +1198,7 @@ export class TrailEngine {
     const hh = (Math.abs(doc.height ?? 1) * grid) / 2;
     const tElev = elevOf(doc);
     const scale = settingGet('bloodScale', 1);
+    const moveDurationMs = _smartMoveDurationMs(dist, grid, options, doc);
     const step = grid * 0.75;
     const n = Math.min(12, Math.max(1, Math.round((dist / step) * (0.55 + depth * 0.45))));
     const stains = [];
@@ -1141,6 +1206,7 @@ export class TrailEngine {
     const wt = worldTime();
     for (let i = 1; i <= n; i++) {
       const t = i / (n + 0.5);
+      const stepDelayMs = moveDurationMs > 0 ? Math.round(t * moveDurationMs) : 0;
       const x = hw + x0 + dx * t + (Math.random() - 0.5) * grid * 0.2;
       const y = hh + y0 + dy * t + (Math.random() - 0.5) * grid * 0.2;
       // resolve surface PER SAMPLE (just like footprints): a trail crossing a tile
@@ -1159,6 +1225,7 @@ export class TrailEngine {
         a: Math.min(0.95, (0.35 + depth * 0.3 + Math.random() * 0.15) * alphaK),
         c: stainColor,
         T: wt,
+        ...(stepDelayMs > 0 ? { d: stepDelayMs } : {}),
         ...zoneNw,
         e: surf.e,
         ...(surf.tid ? { tid: surf.tid } : {}),

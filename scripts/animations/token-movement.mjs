@@ -840,12 +840,15 @@ export function getTokenSupportElevation(token, elevOverride, { forFlySuppressio
     const elev = Number.isFinite(Number(elevOverride)) ? Number(elevOverride) : _readTokenRawElevation(token);
     const level = levelOverride !== undefined ? levelOverride : (baseSrc?.level ?? doc?.level ?? null);
     const cache = token._ssSupportCache;
+    const cachedMaxFloor = cache
+        ? Math.max(Number.isFinite(cache.floorElev) ? cache.floorElev : -Infinity, Number.isFinite(cache.sceneFloorElev) ? cache.sceneFloorElev : -Infinity)
+        : -Infinity;
     if (cache &&
         cache.ver === _surfaceWorldVersion &&
         cache.level === level &&
         Math.abs(cache.x - x) < 0.5 &&
         Math.abs(cache.y - y) < 0.5 &&
-        Math.abs(cache.elev - elev) < 0.05) {
+        (Math.abs(cache.elev - elev) < 0.05 || (elev <= cache.elev + 0.05 && elev >= cachedMaxFloor - 0.05))) {
         if (forFlySuppression && cache.sourceType === 'token' && !cache.isLargePlatform) {
             return cache.sceneFloorElev;
         }
@@ -3187,14 +3190,10 @@ function _isFullScreenDofLayer(obj, primary) {
 }
 function _canUseGroupedPrimaryDof(obj) {
     const primary = globalThis.canvas?.primary;
-    if (!primary || obj?.parent !== primary)
+    if (!primary || obj?.parent !== primary || primary.cullable)
         return false;
     const proto = Object.getPrototypeOf(primary);
-    if (!proto?._ssGroupedDofPatched)
-        return false;
-    if (primary._mask)
-        return true;
-    return Array.isArray(primary.filters) && primary.filters.some((f) => Boolean(f?.enabled));
+    return Boolean(proto?._ssGroupedDofPatched && typeof primary.render === 'function');
 }
 function _clearIndividualDofFilter(obj) {
     const existing = obj._ssDofBlurFilter;
@@ -3682,6 +3681,28 @@ function _applyTokenOcclusionAlpha(token, occlusionAlpha, centerOffX = 0, center
     }
 }
 let _inInternalAltitudePan = false;
+let _pendingFinalAltitudePanSync = false;
+function _flushFinalAltitudePanSync() {
+    if (!_pendingFinalAltitudePanSync)
+        return;
+    _pendingFinalAltitudePanSync = false;
+    const cv = globalThis.canvas;
+    if (!canZoomZoomStage(cv))
+        return;
+    _inInternalAltitudePan = true;
+    try {
+        cv.pan({
+            x: cv.stage.pivot.x,
+            y: cv.stage.pivot.y,
+            scale: Number(cv.stage.scale.x) || 1,
+            __sstInternal: true
+        });
+    }
+    catch { /* ignore */ }
+    finally {
+        _inInternalAltitudePan = false;
+    }
+}
 function _neutralElevationPerspective(tokElev, obsElev, gridDistance) {
     const gridDist = Math.max(0.5, Number(gridDistance) || 5);
     const deltaElevation = (Number(tokElev) || 0) - (Number(obsElev) || 0);
@@ -3710,7 +3731,7 @@ function _neutralElevationPerspective(tokElev, obsElev, gridDistance) {
  * If the user manually zooms the camera in below the observer's altitude (`observerPersp.cameraOcclusionAlpha -> 0`),
  * ground defocus smoothly clears because the camera has descended to ground level.
  */
-function _updateSceneCameraAndDepthOfField(observerElevation, applyCameraZoom = true) {
+function _updateSceneCameraAndDepthOfField(observerElevation, applyCameraZoom = true, transientTick = false) {
     const vertEnabled = getTokenMovementSetting('vertical');
     const zoomEnabled = vertEnabled && getTokenMovementSetting('verticalCameraZoom');
     const blurEnabled = vertEnabled && getTokenMovementSetting('verticalBlur');
@@ -3751,26 +3772,62 @@ function _updateSceneCameraAndDepthOfField(observerElevation, applyCameraZoom = 
                 if (typeof window !== 'undefined' && window.__sstTargetScale !== undefined) {
                     window.__sstTargetScale *= ratio;
                 }
-                _inInternalAltitudePan = true;
-                try {
-                    cv.pan({
+                if (transientTick && typeof cv._constrainView === 'function') {
+                    const constrained = cv._constrainView({
                         x: cv.stage.pivot.x,
                         y: cv.stage.pivot.y,
-                        scale: nextScale,
-                        __sstInternal: true
+                        scale: nextScale
                     });
+                    const targetScale = Number(constrained?.scale) || nextScale;
+                    if (Number.isFinite(constrained?.x) && Number.isFinite(constrained?.y)) {
+                        cv.stage.pivot.set(constrained.x, constrained.y);
+                    }
+                    cv.stage.scale.set(targetScale, targetScale);
+                    if (cv.scene?._viewPosition) {
+                        if (Number.isFinite(constrained?.x))
+                            cv.scene._viewPosition.x = constrained.x;
+                        if (Number.isFinite(constrained?.y))
+                            cv.scene._viewPosition.y = constrained.y;
+                        cv.scene._viewPosition.scale = targetScale;
+                    }
+                    if (cv.hud?.rendered) {
+                        try {
+                            cv.hud.align?.();
+                        }
+                        catch { /* ignore */ }
+                    }
+                    _pendingFinalAltitudePanSync = true;
                 }
-                catch { /* ignore */ }
-                finally {
-                    _inInternalAltitudePan = false;
+                else {
+                    _pendingFinalAltitudePanSync = false;
+                    _inInternalAltitudePan = true;
+                    try {
+                        cv.pan({
+                            x: cv.stage.pivot.x,
+                            y: cv.stage.pivot.y,
+                            scale: nextScale,
+                            __sstInternal: true
+                        });
+                    }
+                    catch { /* ignore */ }
+                    finally {
+                        _inInternalAltitudePan = false;
+                    }
                 }
                 const actualScale = Number(cv.stage.scale.x) || curScale;
                 _appliedAltitudeCameraZoom = prevApplied * (actualScale / curScale);
             }
+            else if (!transientTick && _pendingFinalAltitudePanSync) {
+                _flushFinalAltitudePanSync();
+            }
         }
         else {
             _appliedAltitudeCameraZoom = 1;
+            _pendingFinalAltitudePanSync = false;
         }
+    }
+    else if (!transientTick && _pendingFinalAltitudePanSync) {
+        _flushFinalAltitudePanSync();
     }
     // 2) `Depth of Field` blur for the scene background (`canvas.primary.background`), level backgrounds/foregrounds, doors, and tiles
     if (!blurEnabled) {
@@ -3823,7 +3880,7 @@ function _updateSceneCameraAndDepthOfField(observerElevation, applyCameraZoom = 
                         hoverBlend: 0,
                         baseElevation: baseElev
                     });
-                _setObjectDofBlur(ch, chPersp.dofBlurPx * dofAttenuation, true);
+                _setObjectDofBlur(ch, chPersp.dofBlurPx * dofAttenuation, _isFullScreenDofLayer(ch, primary));
             }
         }
     }
@@ -4005,8 +4062,8 @@ function _clearStationaryPerspectiveForToken(token) {
     }
     catch { /* ignore */ }
 }
-function _updateSceneTokensPerspective(applyCameraZoom = true) {
-    _updateSceneCameraAndDepthOfField(_currentObserverElevation, applyCameraZoom);
+function _updateSceneTokensPerspective(applyCameraZoom = true, transientTick = false) {
+    _updateSceneCameraAndDepthOfField(_currentObserverElevation, applyCameraZoom, transientTick);
     const placeables = globalThis.canvas?.tokens?.placeables;
     if (Array.isArray(placeables)) {
         for (const tok of placeables) {
@@ -4680,7 +4737,10 @@ function _tickHoverTokens() {
         applyJumpStateToToken(token);
     }
     if (obsChangedThisTick) {
-        _updateSceneTokensPerspective();
+        _updateSceneTokensPerspective(true, obsStillMoving);
+    }
+    else if (!obsStillMoving && _pendingFinalAltitudePanSync) {
+        _flushFinalAltitudePanSync();
     }
     if (!_hoveringTokens.size && !_elevAnimatingTokens.size && !obsStillMoving)
         _stopHoverTicker();
@@ -4760,9 +4820,9 @@ export function syncTokenFlyHover(token, changed, options) {
     //    - explicit fall invocation via `plummet()` / `options.dnd5e.fall.distance` / `action: 'fall'`;
     //    - falling token descending ALL THE WAY onto a solid surface (`hasLandingSurface === true` — never fires on mid-air `Q` steps!);
     //    - `Falling` status removed while already resting on a solid surface (`hasLandingSurface && wasFalling && !isFallingNow`).
-    const shouldStartPlunge = fallAnimEnabled && !token._ssActiveMoveAnim && hasTicker && ((isExplicitFallOpt && (elevDrop > 0.5 || dndFallDist > 0)) ||
+    const shouldStartPlunge = fallAnimEnabled && !token._ssFallPlunge && !token._ssActiveMoveAnim && hasTicker && ((isExplicitFallOpt && (elevDrop > 0.5 || dndFallDist > 0)) ||
         (hasLandingSurface && elevDrop > 0.5 && (isFallingNow || wasFalling)) ||
-        (hasLandingSurface && wasFalling && !isFallingNow && !_isLogicalTokenInFlyMode(token) && !token._ssFallPlunge));
+        (hasLandingSurface && wasFalling && !isFallingNow && !_isLogicalTokenInFlyMode(token)));
     if (shouldStartPlunge) {
         const grid = globalThis.canvas?.grid?.size ?? 100;
         const wGrids = Math.abs(token.document?.width ?? 1);
@@ -5108,6 +5168,7 @@ export function clearAllJumpAnimations() {
     _currentObserverElevation = baseElev;
     _targetObserverElevation = baseElev;
     _appliedAltitudeCameraZoom = 1;
+    _pendingFinalAltitudePanSync = false;
     _primaryObserverToken = null;
     _observerElevationOverride = null;
     _clearAllDofFilters();
@@ -6097,6 +6158,51 @@ export function installJumpAnimationPatch(TokenClass) {
                     }
                     return;
                 }
+                const fallDistOpt = Number(operation?.dnd5e?.fall?.distance) || 0;
+                const origFallElev = Number(movement?.origin?.elevation ?? 0) || 0;
+                const destFallElev = Number(movement?.destination?.elevation ?? origFallElev) || 0;
+                const hasLocalTokenObj = Boolean(this.object && !this.object.destroyed && _getTicker()?.add);
+                const isLandingFromFall = getTokenMovementSetting('fall') && (fallDistOpt > 0 ||
+                    (hasLocalTokenObj &&
+                        (Boolean(this.object?._ssFallPlunge) ||
+                            ((origFallElev - destFallElev) > 0.5 &&
+                                isTokenFalling(this.object ?? this) &&
+                                _isSupportedAtElevation(this.object ?? this, destFallElev, movement?.destination?.x, movement?.destination?.y, movement?.destination?.level)))) ||
+                    (!hasLocalTokenObj &&
+                        (origFallElev - destFallElev) > 0.5 &&
+                        Boolean(this.actor?.statuses?.has?.('falling')) &&
+                        destFallElev <= (Number(this.parent?.levels?.get?.(movement?.destination?.level)?.elevation?.bottom) || 0) + 0.05));
+                if (isLandingFromFall && !_isTeleportOperation(operation, movement, this.id)) {
+                    await Promise.resolve();
+                    if (hasLocalTokenObj) {
+                        if (!this.object?._ssFallPlunge) {
+                            await new Promise((r) => setTimeout(r, 24));
+                        }
+                        const pl = this.object?._ssFallPlunge;
+                        if (pl) {
+                            const totalWaitMs = Math.max(0, Math.round((Number(pl.durationMs) || 0) - (Number(pl.elapsed) || 0))) + 32;
+                            if (totalWaitMs > 16) {
+                                await new Promise((r) => setTimeout(r, totalWaitMs));
+                            }
+                            const extraDeadline = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + 180;
+                            while (this.object &&
+                                !this.object.destroyed &&
+                                this.object._ssFallPlunge &&
+                                (typeof performance !== 'undefined' ? performance.now() : Date.now()) < extraDeadline) {
+                                await new Promise((r) => setTimeout(r, 20));
+                            }
+                        }
+                    }
+                    else {
+                        const gridDist = Number(this.parent?.grid?.distance ?? globalThis.canvas?.scene?.grid?.distance ?? 5) || 5;
+                        const effFallDist = fallDistOpt > 0 ? fallDistOpt : Math.max(gridDist, origFallElev - destFallElev);
+                        const fallbackWaitMs = Math.max(0, Math.round(computeFallDurationMs(effFallDist, gridDist))) + 32;
+                        if (fallbackWaitMs > 16) {
+                            await new Promise((r) => setTimeout(r, fallbackWaitMs));
+                        }
+                    }
+                    return origOnUpdateMovement.call(this, movement, operation, user);
+                }
                 // Wait for the token's visual step/movement animation to finish (`movement.animation.ended` / `movementAnimationPromise`)
                 // so the `Falling` status (`falling.svg`) and falling loop engage right as the token steps off support into empty air,
                 // rather than snapping on at `t = 0 ms` mid-stride across a roof, bridge, or supporting token
@@ -6194,8 +6300,14 @@ export function installJumpAnimationPatch(TokenClass) {
                 const ticker = _getTicker();
                 if (fallDist > 0 && ticker && typeof ticker.add === 'function') {
                     parentDocProto._onUpdate.call(this, changed, options, userId);
+                    if (this.object && !this.object.destroyed && !this.object._ssFallPlunge) {
+                        syncTokenFlyHover(this.object, changed, options);
+                    }
                     const plunge = this.object?._ssFallPlunge;
-                    const impactDelayMs = plunge ? Math.max(0, Math.round(plunge.durationMs * FALL_IMPACT_T)) : 0;
+                    const gridDist = Number(globalThis.canvas?.scene?.grid?.distance ?? globalThis.canvas?.dimensions?.distance) || 5;
+                    const fallbackDurMs = getTokenMovementSetting('fall') ? computeFallDurationMs(fallDist, gridDist) : 0;
+                    const effDurMs = plunge ? (Number(plunge.durationMs) || fallbackDurMs) : fallbackDurMs;
+                    const impactDelayMs = effDurMs > 0 ? Math.max(0, Math.round(effDurMs * FALL_IMPACT_T)) : 0;
                     const runLandingVfx = () => {
                         if (!this.parent || this.object?.destroyed)
                             return;
@@ -6225,9 +6337,11 @@ export function installJumpAnimationPatch(TokenClass) {
                 const fallDist = Number(options?.dnd5e?.fall?.distance) || 0;
                 if (fallDist > 0 && options?.animate === false) {
                     const plunge = this.object?._ssFallPlunge;
-                    const impactDelayMs = plunge ? Math.max(0, Math.round(plunge.durationMs * FALL_IMPACT_T)) : 0;
-                    if (impactDelayMs > 16) {
-                        await new Promise((r) => setTimeout(r, impactDelayMs));
+                    const totalDelayMs = plunge
+                        ? Math.max(0, Math.round((Number(plunge.durationMs) || 0) - (Number(plunge.elapsed) || 0)))
+                        : 0;
+                    if (totalDelayMs > 16) {
+                        await new Promise((r) => setTimeout(r, totalDelayMs));
                     }
                 }
                 return res;
@@ -6340,6 +6454,44 @@ export function installJumpAnimationPatch(TokenClass) {
             if (hasEnabledFilters)
                 renderer.filter.pop();
         };
+        const origPrimaryRender = primaryGroupProto.render;
+        if (typeof origPrimaryRender === 'function') {
+            primaryGroupProto.render = function (renderer) {
+                const activePrimary = globalThis.canvas?.primary;
+                if (this === activePrimary &&
+                    _dofFilteredObjects.size > 0 &&
+                    !this.cullable &&
+                    this.visible &&
+                    this.worldAlpha > 0 &&
+                    this.renderable &&
+                    !this._mask &&
+                    !(this.filters && this.filters.length)) {
+                    return this.renderAdvanced(renderer);
+                }
+                return origPrimaryRender.call(this, renderer);
+            };
+        }
+        patchedAny = true;
+    }
+    // 7) Cap `dnd5e.landingDust` VFXEffect particle count to prevent 2,500–10,000 synchronous particle freeze at impact
+    const vfxProto = globalThis.foundry?.canvas?.vfx?.VFXEffect?.prototype;
+    if (vfxProto && typeof vfxProto.play === 'function' && !_patchedPrototypes.has(vfxProto)) {
+        _patchedPrototypes.add(vfxProto);
+        const origVfxPlay = vfxProto.play;
+        vfxProto.play = function (...vfxArgs) {
+            try {
+                const dustCount = Number(this?.components?.dust?.count) || 0;
+                if (this?.name === 'dnd5e.landingDust' && dustCount > 220 && typeof this.updateSource === 'function') {
+                    const cappedCount = Math.min(220, Math.max(90, Math.round(dustCount * 0.05)));
+                    this.updateSource({
+                        'components.dust.count': cappedCount,
+                        'components.dust.scale': { min: 0.14, max: 0.24 }
+                    });
+                }
+            }
+            catch { /* ignore */ }
+            return origVfxPlay.apply(this, vfxArgs);
+        };
         patchedAny = true;
     }
     return patchedAny;
@@ -6411,6 +6563,7 @@ function _scheduleSupportReeval(movedTokenId) {
                     (!skipId || doc.id !== skipId) &&
                     !tok._ssActiveMoveAnim &&
                     !tok._ssAirJump &&
+                    !tok._ssFallPlunge &&
                     typeof doc._isFalling === 'function') {
                     const canUpdate = Boolean(g?.user?.isActiveGM
                         || (typeof g?.user?.isDesignated === 'function'
@@ -6424,7 +6577,7 @@ function _scheduleSupportReeval(movedTokenId) {
                         }
                     }
                 }
-                if (!tok._ssActiveMoveAnim) {
+                if (!tok._ssActiveMoveAnim && !tok._ssFallPlunge) {
                     syncTokenFlyHover(tok);
                 }
             }

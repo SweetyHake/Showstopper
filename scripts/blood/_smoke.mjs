@@ -317,7 +317,7 @@ const { BloodRenderer } = await import(`${root}/scripts/blood/renderer.mjs`);
   masks.blood._tag = 'blood-mask';
   masks.snow._tag = 'snow-mask';
   const bodiesFrom = (tag) => [...drawLogs.values()]
-    .filter(l => l.some(e => e[0] === 'di' && e[1][0] === tag)).length;
+    .reduce((n, l) => n + l.filter(e => e[0] === 'di' && e[1][0] === tag).length, 0);
   const snowBefore = bodiesFrom('snow-mask');
   BloodAtlas.tinted('splat', 7, '#123456ff', 2);
   check(bodiesFrom('snow-mask') > snowBefore, 'atlas: снег тонтируется по СНЕЖНОЙ маске');
@@ -529,21 +529,44 @@ const { BloodRenderer } = await import(`${root}/scripts/blood/renderer.mjs`);
   check(vSide(prints1[0].seed) !== vSide(prints1[1].seed), 'footprints: лево/право чередуются');
   check((hooks._trail._soles.get('t1')?.steps ?? 0) > 0, 'footprints: подошвы набрали крови');
 
-  // Clean ground: fading footprints until the soles wear clean
+  // Clean ground: bright first print, progressively fading until the soles wear clean
   const before = store.count;
   hooks._trail.footprints({ id: 't1', x: 900, y: 500, width: 1, height: 1 }, { x: 1000, y: 500 });
   const fresh2 = store.stains.slice(before).filter(s => s.t === STAIN.FOOTPRINT);
-  check(fresh2.length === 2 && fresh2[0].a > fresh2[1].a && fresh2.every(p => p.a < 0.7),
-    `footprints: по чистой земле — затухающие следы с подошв (${fresh2.length})`);
-  check(fresh2[0].c === '#a51414d8', 'footprints: на чистой земле — чистый цвет крови');
+  check(fresh2.length === 2 && fresh2[0].a >= 0.75 && fresh2[0].a > fresh2[1].a,
+    `footprints: по чистой земле — яркий старт и затухание (${fresh2.map(p => p.a.toFixed(2)).join(' → ')})`);
+  check(fresh2[0].c === '#a51414d8' && Number.isFinite(fresh2[0].T),
+    'footprints: на чистой земле — чистый цвет крови и штамп времени T');
   hooks._trail.footprints({ id: 't1', x: 1100, y: 500, width: 1, height: 1 }, { x: 1200, y: 500 });
   hooks._trail.footprints({ id: 't1', x: 1300, y: 500, width: 1, height: 1 }, { x: 1400, y: 500 });
   hooks._trail.footprints({ id: 't1', x: 1500, y: 500, width: 1, height: 1 }, { x: 1600, y: 500 });
   hooks._trail.footprints({ id: 't1', x: 1900, y: 500, width: 1, height: 1 }, { x: 2000, y: 500 });
-  check(!hooks._trail._soles.has('t1'), 'footprints: подошвы вытопчаны');
+  const trailAll = store.stains.slice(before).filter(s => s.t === STAIN.FOOTPRINT);
+  const vOf = (s) => new Rng(s).int(4);
+  check(vOf(fresh2[0].seed) < 2 && vOf(trailAll[trailAll.length - 1].seed) >= 2,
+    `footprints: свежие берут влажные варианты 0/1 (${vOf(fresh2[0].seed)}), хвост — сухие 2/3 (${vOf(trailAll[trailAll.length - 1].seed)})`);
+  check(trailAll[trailAll.length - 1].a < 0.25 && !hooks._trail._soles.has('t1'),
+    `footprints: подошвы вытопчаны в слабый след (${trailAll[trailAll.length - 1].a.toFixed(2)})`);
   const before2 = store.count;
   hooks._trail.footprints({ id: 't1', x: 1700, y: 500, width: 1, height: 1 }, { x: 1800, y: 500 });
   check(store.count === before2, 'footprints: с чистых подошв следов нет');
+
+  // Clean soles must not pick up blood from afar or from sparse satellite droplets before entering the pool
+  store.clear({ broadcast: false });
+  hooks._trail.forget('pre-step-tok');
+  store.add([
+    store.createStain({ t: STAIN.SPLAT, x: 720, y: 550, s: 90, a: 0.95, c: '#a51414d8' }),
+    store.createStain({ t: STAIN.DROPLETS, x: 655, y: 550, s: 45, a: 0.85, c: '#a51414d8' }),
+    store.createStain({ t: STAIN.SPLASH, x: 612, y: 550, s: 48, a: 0.9, c: '#a51414d8' })
+  ], { broadcast: false });
+  const preCount = store.count;
+  hooks._trail.footprints({ id: 'pre-step-tok', x: 500, y: 500, width: 1, height: 1 }, { x: 580, y: 500 });
+  check(store.count === preCount && !hooks._trail._soles.has('pre-step-tok'),
+    'footprints: до входа в лужу (и по редким брызгам DROPLETS) следов нет');
+  hooks._trail.footprints({ id: 'pre-step-tok', x: 580, y: 500, width: 1, height: 1 }, { x: 780, y: 500 });
+  const poolWalkPrints = store.stains.slice(preCount).filter(s => s.t === STAIN.FOOTPRINT);
+  check(poolWalkPrints.length > 0 && poolWalkPrints.every(p => p.x >= 690 && (Number(p.d) || 0) > 0),
+    `footprints: при проходе через лужу следы начинаются только в крови с задержкой d (${poolWalkPrints.length} шт.)`);
 
   // Spatial index stays consistent across all mutations
   const st2 = new BloodStore(game.scenes.get('scene1'));

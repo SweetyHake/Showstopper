@@ -52,7 +52,8 @@ export function parseColor(input) {
   return out;
 }
 
-const h2 = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+const HEX_BYTE = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
+const h2 = (v) => HEX_BYTE[Math.max(0, Math.min(255, Math.round(v)))];
 
 export function toHex8(c) {
   return `#${h2(c.r)}${h2(c.g)}${h2(c.b)}${h2((c.a ?? 1) * 255)}`;

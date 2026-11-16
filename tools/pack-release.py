@@ -15,6 +15,10 @@ ROOT_FILES = [
     "LICENSE",
 ]
 
+OPTIONAL_ROOT_FILES = [
+    "CHANGELOG.md",
+]
+
 RUNTIME_DIRS = [
     "assets",
     "lang",
@@ -44,6 +48,11 @@ def build_package_zip(pkg_dir: Path, out_zip: Path) -> None:
         if not fpath.is_file():
             raise FileNotFoundError(f"[{pkg_dir.name}] Missing required root file: {fname}")
         entries.append((fpath, fname))
+
+    for fname in OPTIONAL_ROOT_FILES:
+        fpath = pkg_dir / fname
+        if fpath.is_file():
+            entries.append((fpath, fname))
 
     for dname in RUNTIME_DIRS:
         dpath = pkg_dir / dname

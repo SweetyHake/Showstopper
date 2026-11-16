@@ -181,7 +181,9 @@ function _lowerVisibleLevelAt(lvl, x, y, upTo) {
     // Fail-closed in favor of solid floor: only drop through when alpha data is built and pixel is transparent
     try {
         const threshold = Math.max(BLOOD_ALPHA_MIN, Number(lvl.background?.alphaThreshold) || 0);
-        const hit = bgMesh.containsCanvasPoint({ x, y }, threshold) !== false;
+        _ptScratch.x = x;
+        _ptScratch.y = y;
+        const hit = bgMesh.containsCanvasPoint(_ptScratch, threshold) !== false;
         if (hit || bgMesh._textureAlphaData == null)
             return null;
     }
@@ -209,10 +211,25 @@ function _resolveTileLevelId(tile, fallbackLvl) {
  * @returns {{e: number, tid: string|null, lvl?: string|null}} e — surface elevation,
  *  tid — surface TileDocument ID or null (floor), lvl — resolved Level ID (if any).
  */
-// Reusable query rectangle and frozen floor constant: surfaceAt runs on every footprint
-// step / trail sample, so allocating a Rectangle + `{ e: 0, tid: null }` per call creates GC churn
+// Reusable query rectangle, scratch point, and frozen floor surface constants:
+// surfaceAt runs on every footprint step / trail sample, so avoiding per-call objects cuts GC churn
 let _surfRect = null;
+const _ptScratch = { x: 0, y: 0 };
 const FLOOR_SURFACE = Object.freeze({ e: 0, tid: null });
+const _floorCache = new Map();
+function _floorSurface(e, lvl) {
+    if (!lvl && e === 0)
+        return FLOOR_SURFACE;
+    const key = `${e}|${lvl ?? ''}`;
+    let cached = _floorCache.get(key);
+    if (!cached) {
+        cached = Object.freeze(lvl ? { e, tid: null, lvl } : { e, tid: null });
+        if (_floorCache.size > 64)
+            _floorCache.clear();
+        _floorCache.set(key, cached);
+    }
+    return cached;
+}
 export function surfaceAt(x, y, upTo = Number.POSITIVE_INFINITY, levelOrId = null) {
     const lvl = resolveLevel(levelOrId);
     const floorE = levelBaseElevation(lvl);
@@ -222,10 +239,9 @@ export function surfaceAt(x, y, upTo = Number.POSITIVE_INFINITY, levelOrId = nul
     const layer = canvas.tiles;
     if (!layer?.placeables?.length) {
         const dropLvl = _lowerVisibleLevelAt(lvl, x, y, upTo);
-        if (dropLvl) {
-            return { e: levelBaseElevation(dropLvl), tid: null, lvl: dropLvl.id };
-        }
-        return floorId ? { e: floorE, tid: null, lvl: floorId } : (floorE === 0 ? FLOOR_SURFACE : { e: floorE, tid: null });
+        if (dropLvl)
+            return _floorSurface(levelBaseElevation(dropLvl), dropLvl.id);
+        return _floorSurface(floorE, floorId);
     }
     // Layer quadtree — O(log N) candidates instead of scanning all tiles
     // (on large scenes with 800+ tiles, a linear scan cost ~ms per footprint step)
@@ -318,10 +334,9 @@ export function surfaceAt(x, y, upTo = Number.POSITIVE_INFINITY, levelOrId = nul
         }
     }
     const lower = getDropLvl();
-    if (lower) {
-        return { e: levelBaseElevation(lower), tid: null, lvl: lower.id };
-    }
-    return floorId ? { e: floorE, tid: null, lvl: floorId } : (floorE === 0 ? FLOOR_SURFACE : { e: floorE, tid: null });
+    if (lower)
+        return _floorSurface(levelBaseElevation(lower), lower.id);
+    return _floorSurface(floorE, floorId);
 }
 /**
  * Whether the tile texture is opaque at the scene point using core's native test
@@ -342,7 +357,9 @@ function _isOpaque(tile, x, y) {
         // Threshold: our minimum, or higher if the tile defines a stricter occlusion threshold
         const own = Number(tile.document?.texture?.alphaThreshold) || 0;
         const threshold = Math.max(BLOOD_ALPHA_MIN, own);
-        const hit = test.call(mesh, { x, y }, threshold) !== false;
+        _ptScratch.x = x;
+        _ptScratch.y = y;
+        const hit = test.call(mesh, _ptScratch, threshold) !== false;
         if (hit)
             return true;
         // "Transparent" with BUILT alpha data is a genuine pixel verdict (core builds

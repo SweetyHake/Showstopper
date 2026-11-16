@@ -68,6 +68,7 @@ const TAU = Math.PI * 2;
 
 let _maskAtlas = null;
 let _detailAtlas = null;
+let _tintBodyCanvas = null;
 const _tintCache = new Map(); // packed idx|rgb|mat (int) → canvas (LRU)
 
 function cellOrigin(idx) {
@@ -1200,154 +1201,173 @@ function ensureSnowMask() {
 }
 
 /**
- * Footprint (interactive token tracks), v2 — anatomical
- * silhouette: smooth half-width profile "ball → arch → heel" (smoothstep
- * between zones, elliptical rounding at toe and heel), contour via
- * traceSmooth, NO polygonal chamfers or straight bridges. Transverse
- * tread is carved out of the base coat (destination-out) and dampens grain;
- * pressure gradient (ball/heel denser than arch), soft edge, squeezed-out
- * rim, toe smear. Oriented toe-forward ALONG +X (stain rotation =
- * movement direction). Variants: 0/2 — left (toe angled outward toward −Y),
- * 1/3 — right (+Y); second pair is "worn" (fainter grooves, sparser grain).
+ * Footprint (interactive token tracks), v5 — amorphous chaotic blood blotch &
+ * depleted residue smear: zero foot/shoe/oval silhouette, built in the same
+ * multi-lobe granular splatter aesthetic as `drawSplat`.
+ * Variants: 0/1 — distinct heavy wet multi-lobe splatters; 2/3 — broken,
+ * scattered dry residue clusters for the fading tail of the trail.
  */
 function drawFootprint(mask, detail, idx, rng) {
   const { ctx, done } = cellCtx(mask, idx);
   const cx = 128, cy = 128;
   const i0 = idx - KIND_BASE.footprint;
-  const left = i0 % 2 === 0;
-  const worn = i0 < 2 ? 0 : 1;
-  const side = left ? -1 : 1;
+  const worn = i0 >= 2;
 
-  // ---- geometry: sole half-width along the axis (logical 256, toe toward +X) ----
-  const halfBall = rng.range(19, 22);     // ball of the foot — widest part
-  const halfWaist = rng.range(10, 12);    // arch waist narrowing
-  const halfHeel = rng.range(13, 15);     // heel
-  const ballX = 10, waistX = -12, heelX = -36;
-  const toeR = rng.range(24, 27);
-  const heelR = rng.range(16, 19);
-  const tilt = side * rng.range(0.10, 0.18); // toe angled outward
-  const tip = ballX + toeR * 1.75;
-  const back = heelX - heelR;
-  // cell scale: track fills ~90% of the atlas cell (otherwise in-game the boot
-  // comes out half the stain size and reads as a generic blotch)
-  const G = 2.0;
-  const smooth = (t) => t * t * (3 - 2 * t);
-  const halfAt = (x) => {
-    if (x >= ballX) return halfBall * Math.sqrt(Math.max(0, 1 - Math.pow((x - ballX) / (tip - ballX), 2)));
-    if (x >= waistX) return halfWaist + (halfBall - halfWaist) * smooth((x - waistX) / (ballX - waistX));
-    if (x >= heelX) return halfHeel + (halfWaist - halfHeel) * smooth((x - heelX) / (waistX - heelX));
-    return halfHeel * Math.sqrt(Math.max(0, 1 - Math.pow((heelX - x) / heelR, 2)));
-  };
-  const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
-  const rot = (x, y) => ({ x: cx + (x * cosT - y * sinT) * G, y: cy + (x * sinT + y * cosT) * G });
-  const unrot = (px, py) => {
-    const dx = (px - cx) / G, dy = (py - cy) / G;
-    return { x: dx * cosT + dy * sinT, y: -dx * sinT + dy * cosT };
+  const makeBlob = (x, y, r) => ({
+    x, y, r,
+    wob: makeWobble(rng, [[2, 0.24], [3, 0.18], [5, 0.12], [8, 0.06]]),
+    nAng: makeNoise(rng, [[2, 0.34], [3, 0.24], [5, 0.16], [9, 0.08]])
+  });
+
+  const blobs = [];
+  if (!worn) {
+    blobs.push(makeBlob(cx + rng.range(-10, 10), cy + rng.range(-8, 8), rng.range(30, 38)));
+    const satCount = 2 + rng.int(2);
+    for (let i = 0; i < satCount; i++) {
+      const ang = rng.angle();
+      const dist = rng.range(18, 38);
+      blobs.push(makeBlob(cx + Math.cos(ang) * dist, cy + Math.sin(ang) * dist, rng.range(14, 26)));
+    }
+  } else {
+    const fragCount = 3 + rng.int(3);
+    for (let i = 0; i < fragCount; i++) {
+      blobs.push(makeBlob(cx + rng.range(-32, 34), cy + rng.range(-20, 20), rng.range(9, 18)));
+    }
+  }
+
+  // Area-weighted CDF for uniform grain distribution across amorphous sub-blobs
+  const cdf = [];
+  let totalWeight = 0;
+  for (let i = 0; i < blobs.length; i++) {
+    totalWeight += blobs[i].r * blobs[i].r;
+    cdf.push(totalWeight);
+  }
+  const pickBlob = () => {
+    const t = rng.next() * totalWeight;
+    for (let i = 0; i < cdf.length; i++) {
+      if (t <= cdf[i]) return blobs[i];
+    }
+    return blobs[0];
   };
 
-  // ---- 1) base coat: single smooth closed contour ----
-  const N = 40;
-  const outline = [];
-  for (let i = 0; i <= N; i++) {
-    const x = back + (tip - back) * (i / N);
-    outline.push(rot(x, -halfAt(x)));
-  }
-  for (let i = N; i >= 0; i--) {
-    const x = back + (tip - back) * (i / N);
-    outline.push(rot(x, halfAt(x)));
-  }
+  // ---- 1) Faint irregular inner backing across asymmetric blobs ----
   ctx.fillStyle = '#ffffff';
-  ctx.globalAlpha = 0.32;
+  ctx.globalAlpha = worn ? 0.12 : 0.26;
   ctx.beginPath();
-  traceSmooth(ctx, outline);
+  for (let i = 0; i < blobs.length; i++) {
+    const b = blobs[i];
+    blobSubpath(ctx, b.x, b.y, b.r * (worn ? 0.58 : 0.68), b.wob, { points: 28, jitter: 0.06, jitRng: rng });
+  }
+  if (!worn) {
+    const b0 = blobs[0];
+    const extraLobes = 2 + rng.int(3);
+    for (let i = 0; i < extraLobes; i++) {
+      const a = rng.angle();
+      const d = rng.range(0.22, 0.58) * b0.r;
+      circleSubpath(ctx, b0.x + Math.cos(a) * d, b0.y + Math.sin(a) * d, rng.range(0.18, 0.36) * b0.r);
+    }
+  }
   ctx.fill();
 
-  // ---- 2) foot arch: natural recess between forefoot sole and heel
-  //         (no modern rubber tread bars, so the track reads as a
-  //         fantasy boot/shoe or pressed bare/soft-soled foot) ----
-  const grooves = [
-    { x: -10 + rng.range(-1.5, 1.5), hw: 3.2, w: rng.range(5.2, 6.8), a: 0.72 }
-  ];
-  ctx.save();
-  ctx.globalCompositeOperation = 'destination-out'; // cell clip keeps cutout local
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineCap = 'round';
-  for (const g of grooves) {
-    const h = halfAt(g.x) * 0.85 * G;
-    const gx = g.x * G, bend = side * 2.2 * G;
-    ctx.globalAlpha = g.a;
-    ctx.lineWidth = g.w;
-    ctx.beginPath();
-    ctx.moveTo(cx + gx - bend, cy - h);
-    ctx.quadraticCurveTo(cx + gx + bend, cy, cx + gx - bend, cy + h);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // ---- 3) grain: pressure (ball/heel denser than arch), soft edge,
-  //         grooves dampen density ----
-  const grooveMul = (x) => {
-    for (const g of grooves) {
-      const d = Math.abs(x - g.x);
-      if (d < g.hw * 2.2) return 0.12 + 0.88 * (d / (g.hw * 2.2));
-    }
-    return 1;
-  };
-  const nFine = makeNoise(rng, [[3, 0.12], [7, 0.07]]);
-  const grainN = 2200 + rng.int(500);
+  // ---- 2) Granular splatter grain distributed across the sub-blobs ----
+  const nFine = makeNoise(rng, [[4, 0.25], [7, 0.18], [11, 0.1]]);
+  const grainN = worn ? (1350 + rng.int(350)) : (2200 + rng.int(500));
   const pts = [];
+  const wearMul = worn ? 0.82 : 1.12;
   for (let i = 0; i < grainN; i++) {
-    const x = rng.range(back - 2, tip + 2), y = rng.range(-26, 26);
-    const u = unrot(x, y);
-    if (u.x < back || u.x > tip || Math.abs(u.y) > halfAt(u.x)) continue;
-    const edge = Math.abs(u.y) / halfAt(u.x); // 0 — axis, 1 — edge
-    if (rng.next() < edge * edge * 0.85) continue; // edge dissolves
-    const pressure = u.x > waistX + 8 || u.x < heelX + 6 ? 1 : 0.6; // arch is lighter
-    const dens = (0.55 + 0.45 * rng.next()) * grooveMul(u.x) * pressure
-      * (worn ? 0.75 : 1) * (0.75 + 0.25 * nFine(u.x));
-    if (rng.next() > dens * 1.8) continue;
-    const p = rot(x + gauss(rng) * 0.8, y + gauss(rng) * 0.8);
+    const b = pickBlob();
+    const phi = rng.angle();
+    const u = rng.next();
+    const d = b.r * 1.22 * Math.pow(u, 0.58);
+    const fall = Math.pow(1 - u, 1.2);
+    const dens = fall * Math.max(0, 0.54 + b.nAng(phi) + nFine(u * TAU + phi) * 0.45) * wearMul;
+    if (rng.next() > dens * 1.65) continue;
     pts.push({
-      x: p.x, y: p.y,
-      r: 0.55 + rng.next() * rng.next() * 2.1,
-      a: Math.min(0.95, 0.34 + dens * 0.66 * (1 - edge * 0.35))
+      x: b.x + Math.cos(phi) * d + gauss(rng) * 1.6,
+      y: b.y + Math.sin(phi) * d + gauss(rng) * 1.6,
+      r: 0.55 + rng.next() * rng.next() * 2.4 * (0.45 + Math.min(1, dens)),
+      a: Math.min(0.97, (worn ? 0.26 : 0.38) + Math.min(1, dens) * 0.65)
     });
   }
   drawGrain(ctx, pts);
 
-  // ---- 4) squeezed-out rim along the contour + smear at the toe ----
-  ctx.globalAlpha = 0.35;
+  // ---- 3) Chaotic fibrous splash strands with tip droplets ----
+  const strands = worn ? (2 + rng.int(3)) : (4 + rng.int(4));
+  for (let i = 0; i < strands; i++) {
+    const b = blobs[rng.int(blobs.length)];
+    const a = rng.chance(0.55) ? rng.range(-0.85, 0.85) : rng.angle();
+    const sx = b.x + Math.cos(a) * b.r * 0.42;
+    const sy = b.y + Math.sin(a) * b.r * 0.42;
+    const len = worn ? rng.range(12, 26) : rng.range(18, 44);
+    const tip = filament(
+      ctx, rng, sx, sy, a + rng.range(-0.28, 0.28),
+      len, rng.range(-0.55, 0.55), rng.range(1.4, 3.2), 28 + rng.int(28)
+    );
+    if (rng.chance(0.45)) {
+      dot(
+        ctx,
+        Math.max(8, Math.min(248, tip.x)),
+        Math.max(8, Math.min(248, tip.y)),
+        rng.range(1.4, worn ? 2.6 : 3.6),
+        rng.range(0.45, 0.85)
+      );
+    }
+  }
+
+  // ---- 4) Irregular satellite comet droplets & fine perimeter mist ----
+  ctx.globalAlpha = worn ? 0.58 : 0.78;
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  for (let i = 0; i < 18; i++) {
-    const x = rng.range(back + 4, tip - 4);
-    const h = halfAt(x);
-    if (h < 3) continue;
-    const p = rot(x, (rng.chance(0.5) ? -1 : 1) * h * rng.range(1.0, 1.07));
-    circleSubpath(ctx, p.x, p.y, 0.5 + rng.next() * 1.1);
+  const sats = worn ? (3 + rng.int(4)) : (6 + rng.int(6));
+  for (let i = 0; i < sats; i++) {
+    const b = blobs[rng.int(blobs.length)];
+    const a = rng.angle();
+    const d = b.r * rng.range(0.95, 1.75);
+    const px = Math.max(8, Math.min(248, b.x + Math.cos(a) * d));
+    const py = Math.max(8, Math.min(248, b.y + Math.sin(a) * d));
+    const r = rng.range(1.4, worn ? 3.0 : 4.6);
+    cometSubpath(ctx, px, py, r, r * rng.range(1.3, 2.6), a, rng.range(-0.45, 0.45));
   }
   ctx.fill();
-  for (let i = 0, n = rng.int(2) + 1; i < n; i++) {
-    const sy = toeR * gauss(rng) * 0.4;
-    const p = rot(tip - 6, sy);
-    filament(ctx, rng, p.x, p.y, tilt + rng.range(-0.35, 0.35), rng.range(7, 13),
-      side * rng.range(0.2, 0.6), rng.range(1.2, 2.4), 18 + rng.int(12));
+
+  const mistN = worn ? (28 + rng.int(20)) : (55 + rng.int(35));
+  for (let i = 0; i < mistN; i++) {
+    const b = blobs[rng.int(blobs.length)];
+    const a = rng.angle();
+    const d = b.r * rng.range(0.85, 1.55);
+    dot(
+      ctx,
+      Math.max(6, Math.min(250, b.x + Math.cos(a) * d)),
+      Math.max(6, Math.min(250, b.y + Math.sin(a) * d)),
+      0.45 + rng.next() * 0.95,
+      rng.range(0.14, 0.48)
+    );
   }
   done();
 
-  // ---- detail: dark wear specks inside the sole ----
+  // ---- 5) detail pass: dark internal mottling & coagulated clots ----
   const d2 = cellCtx(detail, idx);
   const dctx = d2.ctx;
-  for (let i = 0, n = 20 + rng.int(16); i < n; i++) {
-    const x = rng.range(back, tip), y = rng.range(-22, 22);
-    const u = unrot(x, y);
-    if (u.x < back + 2 || u.x > tip - 2 || Math.abs(u.y) > halfAt(u.x) * 0.9) continue;
-    const p = rot(x, y);
-    dctx.fillStyle = `rgba(0,0,0,${rng.range(0.1, 0.24).toFixed(2)})`;
+  const mottle = 30 + rng.int(25);
+  for (let i = 0; i < mottle; i++) {
+    const b = pickBlob();
+    const a = rng.angle();
+    const d = rng.range(0, b.r * 0.85);
+    dctx.fillStyle = `rgba(0,0,0,${rng.range(0.14, 0.32).toFixed(2)})`;
     dctx.beginPath();
-    circleSubpath(dctx, p.x, p.y, rng.range(0.6, 1.6) * G * 0.6);
+    circleSubpath(dctx, b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, rng.range(0.6, 1.8));
     dctx.fill();
   }
+  dctx.fillStyle = 'rgba(0,0,0,0.32)';
+  dctx.beginPath();
+  const clots = 3 + rng.int(4);
+  for (let i = 0; i < clots; i++) {
+    const b = blobs[rng.int(blobs.length)];
+    const a = rng.angle();
+    const d = rng.range(0.05, 0.58) * b.r;
+    circleSubpath(dctx, b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, rng.range(1.5, 3.6));
+  }
+  dctx.fill();
   d2.done();
 }
 
@@ -2183,6 +2203,7 @@ export const BloodAtlas = {
     _snowStamp = null;
     _snowWorldTile = null;
     _snowWorldPatCache = new WeakMap();
+    _tintBodyCanvas = null;
     _tintCache.clear();
   },
 
@@ -2302,13 +2323,19 @@ export const BloodAtlas = {
       }
     }
 
-    const body = document.createElement('canvas');
-    body.width = body.height = CELL;
+    if (!_tintBodyCanvas) {
+      _tintBodyCanvas = document.createElement('canvas');
+      _tintBodyCanvas.width = _tintBodyCanvas.height = CELL;
+    }
+    const body = _tintBodyCanvas;
     const bctx = body.getContext('2d');
+    bctx.globalAlpha = 1;
+    bctx.globalCompositeOperation = 'source-over';
+    bctx.clearRect(0, 0, CELL, CELL);
     bctx.drawImage(maskAtlas, sx, sy, CELL, CELL, 0, 0, CELL, CELL);
     if (isSnowPrint) {
-      // Densify the anatomical sole/paw/hoof impression in snow (0.34 -> 0.82..1.0)
-      // while preserving the arch cutout and individual toe shapes
+      // Densify the compressed sole/paw/hoof impression in snow (0.34 -> 0.82..1.0)
+      // while preserving contour gaps and individual toe shapes
       bctx.drawImage(body, 0, 0);
       bctx.drawImage(body, 0, 0);
     }

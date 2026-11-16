@@ -40,6 +40,14 @@ const MAX_SPAN_R = 8192;
 // tile overlay: margin past the tile bounds for satellite droplets (clipped afterward)
 const OVERLAY_PAD = 256;
 const TAU = Math.PI * 2;
+const SNOW_TONE_FAMILIES = Object.freeze([
+    { flatEdge: '#8e98a6', frost: '#bcc4d0', flat: '#ccd4e0' },
+    { flatEdge: '#8a94a2', frost: '#b6beca', flat: '#c8d0dc' },
+    { flatEdge: '#92969e', frost: '#c0c4cc', flat: '#d0d4dc' },
+    { flatEdge: '#8892a0', frost: '#b4bcc8', flat: '#c6ceda' },
+    { flatEdge: '#909aa8', frost: '#bec6d2', flat: '#ced6e2' },
+    { flatEdge: '#8c96a4', frost: '#b8c0cc', flat: '#cad2de' }
+]);
 const _key = (e, cx, cy, lvl = '') => (lvl ? `${e}|${cx},${cy}|${lvl}` : `${e}|${cx},${cy}`);
 const _elevKey = (e, lvl = '') => (lvl ? `${e}|${lvl}` : (Number(e) || 0));
 /** Step puff toggle (separate from hit bursts so walking noise can be muted independently). */
@@ -331,6 +339,8 @@ export class BloodRenderer {
         this._dirtyRects.set(key, null);
         const chunk = this.chunks.get(key);
         if (chunk) {
+            chunk.base = null;
+            chunk.baseMinFade = 0;
             chunk.snowBaseValid = false;
             chunk.snowBaseDirty = true;
             chunk.snowBaseDirtyRect = null;
@@ -1167,7 +1177,7 @@ export class BloodRenderer {
                                 this._invalidateSnowBaseForStain(f.st, [mk]);
                                 this._markDirtyStain(f.st, [mk]);
                             }
-                            else {
+                            else if (!ch?.base) {
                                 this._markFullChunk(mk);
                             }
                         }
@@ -1313,19 +1323,48 @@ export class BloodRenderer {
             for (const m of members)
                 if (this._fading.has(m.i) && m.i < minFade)
                     minFade = m.i;
-            if (!chunk.base || chunk.baseMinFade !== minFade) {
+            if (!chunk.base || minFade < chunk.baseMinFade) {
                 const bcv = document.createElement('canvas');
                 bcv.width = bcv.height = chunk.px;
                 const bctx = bcv.getContext('2d');
-                bctx.setTransform(this.scale, 0, 0, this.scale, -ox * this.scale, -oy * this.scale);
-                const staticBase = [];
-                for (const st of members) {
-                    if (st.i < minFade)
-                        staticBase.push(st);
+                if (chunk.baked && chunk.maxId > 0 && !chunk.base && minFade > chunk.maxId) {
+                    bctx.drawImage(chunk.canvas, 0, 0);
+                    const gapTail = [];
+                    for (const st of members) {
+                        if (st.i > chunk.maxId && st.i < minFade)
+                            gapTail.push(st);
+                    }
+                    if (gapTail.length) {
+                        bctx.setTransform(this.scale, 0, 0, this.scale, -ox * this.scale, -oy * this.scale);
+                        this._renderBaseMembersLayered(bctx, gapTail, null);
+                        bctx.setTransform(1, 0, 0, 1, 0, 0);
+                    }
                 }
-                this._renderBaseMembersLayered(bctx, staticBase, null);
-                bctx.setTransform(1, 0, 0, 1, 0, 0);
+                else {
+                    bctx.setTransform(this.scale, 0, 0, this.scale, -ox * this.scale, -oy * this.scale);
+                    const staticBase = [];
+                    for (const st of members) {
+                        if (st.i < minFade)
+                            staticBase.push(st);
+                    }
+                    this._renderBaseMembersLayered(bctx, staticBase, null);
+                    bctx.setTransform(1, 0, 0, 1, 0, 0);
+                }
                 chunk.base = bcv;
+                chunk.baseMinFade = minFade;
+            }
+            else if (minFade > chunk.baseMinFade) {
+                const settled = [];
+                for (const st of members) {
+                    if (st.i >= chunk.baseMinFade && st.i < minFade)
+                        settled.push(st);
+                }
+                if (settled.length) {
+                    const bctx = chunk.base.getContext('2d');
+                    bctx.setTransform(this.scale, 0, 0, this.scale, -ox * this.scale, -oy * this.scale);
+                    this._renderBaseMembersLayered(bctx, settled, null);
+                    bctx.setTransform(1, 0, 0, 1, 0, 0);
+                }
                 chunk.baseMinFade = minFade;
             }
             const { ctx } = chunk;
@@ -1341,6 +1380,27 @@ export class BloodRenderer {
             this._renderBaseMembersLayered(ctx, activeFade, null);
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             chunk.maxId = lastId;
+            this._updateTex(chunk.tex);
+            return;
+        }
+        if (chunk.base && !animated && !this._fullRedraw.has(key) && !hasCarveInChunk && !hasSnowInChunk) {
+            const { ctx } = chunk;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, chunk.px, chunk.px);
+            ctx.drawImage(chunk.base, 0, 0);
+            ctx.setTransform(this.scale, 0, 0, this.scale, -ox * this.scale, -oy * this.scale);
+            const tailSettled = [];
+            for (const st of members) {
+                if (st.i >= chunk.baseMinFade)
+                    tailSettled.push(st);
+            }
+            if (tailSettled.length)
+                this._renderBaseMembersLayered(ctx, tailSettled, null);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            chunk.base = null;
+            chunk.baseMinFade = 0;
+            chunk.maxId = lastId;
+            chunk.baked = true;
             this._updateTex(chunk.tex);
             return;
         }
@@ -1416,6 +1476,7 @@ export class BloodRenderer {
                     }
                 }
                 chunk.base = null;
+                chunk.baseMinFade = 0;
                 this._renderMembersWithSnowCarve(ctx, px, ox, oy, subMembers, { rx0, ry0, rw, rh }, chunk, members, key, !animated);
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 if (lastId > chunk.maxId)
@@ -1430,6 +1491,7 @@ export class BloodRenderer {
         // Do NOT clear `ctx` before calling `_renderMembersWithSnowCarve`, otherwise `_ensureChunkSnowBase`
         // could copy a blank canvas; `_renderMembersWithSnowCarve` clears `ctx` itself!
         chunk.base = null;
+        chunk.baseMinFade = 0;
         const { ctx, px } = chunk;
         this._renderMembersWithSnowCarve(ctx, px, ox, oy, members, null, chunk, members, key, false);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2801,16 +2863,9 @@ export class BloodRenderer {
                 grow = 1 - Math.pow(1 - p, 3); // easeOutCubic
         }
         const stainA = st.a * colA;
-        const baseAlpha = stainA * rng.range(0.92, 1) * alphaMul * (1 - 0.22 * dry) * wash;
+        const dryFade = st.t === STAIN.FOOTPRINT ? 0.48 : 0.22;
+        const baseAlpha = stainA * rng.range(0.92, 1) * alphaMul * (1 - dryFade * dry) * wash;
         const rot = st.r + rng.range(-0.05, 0.05);
-        const SNOW_TONE_FAMILIES = [
-            { flatEdge: '#8e98a6', frost: '#bcc4d0', flat: '#ccd4e0' },
-            { flatEdge: '#8a94a2', frost: '#b6beca', flat: '#c8d0dc' },
-            { flatEdge: '#92969e', frost: '#c0c4cc', flat: '#d0d4dc' },
-            { flatEdge: '#8892a0', frost: '#b4bcc8', flat: '#c6ceda' },
-            { flatEdge: '#909aa8', frost: '#bec6d2', flat: '#ced6e2' },
-            { flatEdge: '#8c96a4', frost: '#b8c0cc', flat: '#cad2de' }
-        ];
         const isPureSnow = material === 2 && !(col && (col.r > col.b + 16 || col.g > col.b + 16));
         const toneIdx = ((st.seed >>> 3) + (st.seed >>> 11) + variant) % 6;
         const snowTone = SNOW_TONE_FAMILIES[toneIdx];
@@ -3092,7 +3147,7 @@ export class BloodRenderer {
         // Bloody footprints ("wet step") get 1–2 sparse droplets near the boot
         const isPrint = st.t === STAIN.FOOTPRINT;
         const nDrops = material === 2 ? 0
-            : isPrint ? (material === 0 ? 1 + rng.int(2) : 0)
+            : isPrint ? ((material === 0 && stainA >= 0.48) ? 1 + rng.int(2) : 0)
                 : st.t === STAIN.POOL ? 2 + rng.int(4)
                     : st.t === STAIN.SPLASH ? 5 + rng.int(9)
                         : st.t === STAIN.SPLAT ? 4 + rng.int(8)
@@ -3100,7 +3155,7 @@ export class BloodRenderer {
         if (!nDrops)
             return;
         const dropCount = BloodAtlas.kindCount('droplet');
-        ctx.globalAlpha = stainA * 0.9 * alphaMul * (1 - 0.22 * dry) * wash;
+        ctx.globalAlpha = stainA * 0.9 * alphaMul * (1 - dryFade * dry) * wash;
         for (let i = 0; i < nDrops; i++) {
             const angle = isPrint ? st.r + rng.range(-0.9, 0.9)
                 : st.t === STAIN.SPLASH
