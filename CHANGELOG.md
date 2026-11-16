@@ -1,5 +1,10 @@
 # Changelog
 
+## 14.4.1
+
+- Fix duplicate fall plunge animation when lowering elevation to 0
+- Include CSS underscore partials (`styles/app/_variables.css`) in release archive
+
 ## 14.4.0
 
 - Initial public release for Foundry VTT v14
