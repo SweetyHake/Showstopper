@@ -183,6 +183,256 @@ function shouldPanCamera(settings) {
 export function midiTriggerActive(settings) {
     return (game.modules.get("midi-qol")?.active ?? false) && settings.midiTrigger !== false;
 }
+export function aaSyncActive(settings = getAnimSettings()) {
+    if (settings?.aaSync === false)
+        return false;
+    if (!(game.modules?.get?.("autoanimations")?.active ?? false))
+        return false;
+    try {
+        return game.settings.get("autoanimations", "killAllAnim") !== "off";
+    }
+    catch {
+        return true;
+    }
+}
+export function aaPlaysOnDamageCore() {
+    try {
+        return Boolean(game.settings.get("autoanimations", "playonDamageCore"));
+    }
+    catch {
+        return false;
+    }
+}
+export function aaDefersAttackToDamage(activity, settings = getAnimSettings()) {
+    if (!aaSyncActive(settings) || !aaPlaysOnDamageCore())
+        return false;
+    if (!activity || activity.type === "heal")
+        return false;
+    const areaTypes = globalThis.CONFIG?.DND5E?.areaTargetTypes;
+    const tplType = activity?.target?.template?.type;
+    if (tplType && areaTypes && Object.prototype.hasOwnProperty.call(areaTypes, tplType))
+        return false;
+    const parts = activity?.damage?.parts;
+    return Array.isArray(parts) ? parts.length > 0 : (parts?.size ?? 0) > 0;
+}
+function getAAGlobalDelayMs() {
+    try {
+        const v = Number(game.settings.get("autoanimations", "globaldelay"));
+        return Number.isFinite(v) && v >= 0 ? v : 100;
+    }
+    catch {
+        return 100;
+    }
+}
+let _aaTicketSeq = 0;
+const _pendingAATickets = [];
+const _deferredDamageHits = [];
+const _aaTicketWaiters = new Map();
+function notifyAATicketWaiters(attackerId) {
+    const waiters = _aaTicketWaiters.get(attackerId);
+    if (!waiters?.size)
+        return;
+    _aaTicketWaiters.delete(attackerId);
+    for (const wake of waiters)
+        wake();
+}
+function waitForAATicket(attackerId, maxWaitMs = 90) {
+    if (!attackerId)
+        return Promise.resolve();
+    const alreadyPending = _pendingAATickets.some((t) => !t.claimed && !t.settled && t.attackerId === attackerId);
+    if (alreadyPending)
+        return Promise.resolve();
+    return new Promise((resolve) => {
+        let done = false;
+        let timer = null;
+        const finish = () => {
+            if (done)
+                return;
+            done = true;
+            if (timer)
+                clearTimeout(timer);
+            const set = _aaTicketWaiters.get(attackerId);
+            if (set) {
+                set.delete(finish);
+                if (set.size === 0)
+                    _aaTicketWaiters.delete(attackerId);
+            }
+            resolve();
+        };
+        let set = _aaTicketWaiters.get(attackerId);
+        if (!set) {
+            set = new Set();
+            _aaTicketWaiters.set(attackerId, set);
+        }
+        set.add(finish);
+        timer = setTimeout(finish, maxWaitMs);
+    });
+}
+function pruneExpiredDeferredHits(now = performance.now()) {
+    for (let i = _deferredDamageHits.length - 1; i >= 0; i--) {
+        if (now - _deferredDamageHits[i].createdAt > 30000) {
+            _deferredDamageHits.splice(i, 1);
+        }
+    }
+}
+export function deferAttackForDamageRoll({ attacker, target, attackState, item, delivery, activity }) {
+    if (!attacker || !target)
+        return;
+    pruneExpiredDeferredHits();
+    _deferredDamageHits.push({
+        attackerId: attacker.id,
+        targetId: target.id,
+        attackState,
+        item: item ?? null,
+        delivery,
+        activityUuid: activity?.uuid ?? null,
+        itemId: item?.id ?? null,
+        createdAt: performance.now()
+    });
+}
+export function flushUnclaimedAATicketsForToken(attackerId = null, opts = {}) {
+    const targets = _pendingAATickets.filter((t) => !t.claimed && !t.settled && (attackerId == null || t.attackerId === attackerId));
+    for (const t of targets) {
+        t.release(opts.abort ? { abort: true } : {});
+    }
+}
+function claimAATicket(attackerId, item, delivery) {
+    const itemId = item?.id ?? null;
+    let matchIdx = -1;
+    if (itemId) {
+        matchIdx = _pendingAATickets.findIndex((t) => !t.claimed && !t.settled && t.attackerId === attackerId && t.itemId === itemId);
+    }
+    if (matchIdx < 0) {
+        matchIdx = _pendingAATickets.findIndex((t) => !t.claimed && !t.settled && t.attackerId === attackerId && t.delivery === delivery);
+    }
+    if (matchIdx < 0) {
+        matchIdx = _pendingAATickets.findIndex((t) => !t.claimed && !t.settled && t.attackerId === attackerId);
+    }
+    if (matchIdx < 0)
+        return null;
+    const ticket = _pendingAATickets[matchIdx];
+    ticket.claimed = true;
+    if (ticket._orphanTimer) {
+        clearTimeout(ticket._orphanTimer);
+        ticket._orphanTimer = null;
+    }
+    return ticket;
+}
+function syncAAReleaseWithChoreo(ctx, targetToken, isHit, baseWaitMs, choreoEventOffsetMs, aaEventOffsetMs) {
+    if (!ctx?.hasAA || !ctx.aaTicket)
+        return baseWaitMs;
+    const totalAALeadMs = getAAGlobalDelayMs() + aaEventOffsetMs;
+    const baseTotalMs = baseWaitMs + choreoEventOffsetMs;
+    if (baseTotalMs >= totalAALeadMs) {
+        const delayMs = Math.round(baseTotalMs - totalAALeadMs);
+        ctx.aaTicketReleaseTimer = setTimeout(() => {
+            ctx.aaTicketReleaseTimer = null;
+            ctx.aaTicket?.release({ isHit, target: targetToken });
+        }, delayMs);
+        return baseWaitMs;
+    }
+    ctx.aaTicket.release({ isHit, target: targetToken });
+    return Math.round(Math.max(baseWaitMs, totalAALeadMs - choreoEventOffsetMs));
+}
+function withImpactMs(impactMs, fn) {
+    fn.impactMs = impactMs;
+    return fn;
+}
+Hooks.on("AutomatedAnimations-WorkflowStart", (clonedData, animationData) => {
+    if (!isDnd5e() || !clonedData || clonedData.stopWorkflow || clonedData.activeEffect)
+        return;
+    if (!animationData)
+        return;
+    const aaMenu = animationData.menu;
+    const aaPreset = animationData.presetType;
+    if (aaMenu === "aefx" ||
+        aaMenu === "aura" ||
+        aaMenu === "templatefx" ||
+        (aaMenu === "preset" && (aaPreset === "proToTemp" || aaPreset === "thunderwave" || aaPreset === "teleportation"))) {
+        return;
+    }
+    const settings = getAnimSettings();
+    if (!shouldPlayAnimation(settings) || !aaSyncActive(settings))
+        return;
+    const item = clonedData.item ?? null;
+    const activity = clonedData.activity ?? null;
+    const attackType = activity?.attack?.type?.value ?? activity?.actionType ?? item?.system?.actionType;
+    const classification = activity?.attack?.type?.classification ?? null;
+    const delivery = classifyItemAttack(item, attackType, classification);
+    if (!delivery)
+        return;
+    if (delivery === "rwak" && settings.enableRangedAnim === false)
+        return;
+    if ((delivery === "msak" || delivery === "rsak") && settings.enableSpellAnim === false)
+        return;
+    if (delivery === "mwak" && settings.enableAttackAnim === false)
+        return;
+    const attacker = resolveToken(clonedData.token ?? activity?.token ?? item?.parent?.getActiveTokens?.()?.[0]);
+    const rawTargets = Array.isArray(clonedData.targets)
+        ? clonedData.targets
+        : clonedData.targets instanceof Set
+            ? Array.from(clonedData.targets)
+            : Array.from(game.user?.targets ?? []);
+    const target = resolveToken(rawTargets[0]);
+    if (!attacker || !target || attacker.id === target.id)
+        return;
+    let settleResolve;
+    const gatePromise = new Promise((resolve) => {
+        settleResolve = resolve;
+    });
+    const ticket = {
+        id: ++_aaTicketSeq,
+        attackerId: attacker.id,
+        targetId: target.id,
+        itemId: item?.id ?? null,
+        delivery,
+        animationData,
+        clonedData,
+        claimed: false,
+        settled: false,
+        _safetyTimer: null,
+        _orphanTimer: null,
+        release(outcome = {}) {
+            if (ticket.settled)
+                return;
+            ticket.settled = true;
+            if (ticket._safetyTimer) {
+                clearTimeout(ticket._safetyTimer);
+                ticket._safetyTimer = null;
+            }
+            if (ticket._orphanTimer) {
+                clearTimeout(ticket._orphanTimer);
+                ticket._orphanTimer = null;
+            }
+            const idx = _pendingAATickets.indexOf(ticket);
+            if (idx >= 0)
+                _pendingAATickets.splice(idx, 1);
+            if (outcome.abort) {
+                clonedData.stopWorkflow = true;
+            }
+            else if (typeof outcome.isHit === "boolean") {
+                clonedData.hit = outcome.isHit;
+                if (outcome.target) {
+                    clonedData.hitTargets = outcome.isHit ? [outcome.target] : [];
+                }
+            }
+            settleResolve();
+        }
+    };
+    ticket._safetyTimer = setTimeout(() => ticket.release(), 10000);
+    if (!midiTriggerActive(settings)) {
+        ticket._orphanTimer = setTimeout(() => {
+            if (!ticket.claimed && (pendingTokenJobs.get(attacker.id) ?? 0) === 0) {
+                ticket.release();
+            }
+        }, 400);
+    }
+    _pendingAATickets.push(ticket);
+    if (!Array.isArray(clonedData.deferrals))
+        clonedData.deferrals = [];
+    clonedData.deferrals.push(gatePromise);
+    notifyAATicketWaiters(attacker.id);
+});
 function saveCameraPosition() {
     return {
         x: canvas.stage.pivot.x,
@@ -429,7 +679,9 @@ async function shakeLocal({ duration = 500, strength = 20 } = {}) {
         log("shake error:", e);
     }
 }
-function shakeForEveryone(duration = 500, strength = 20) {
+function shakeForEveryone(duration = 500, strength = 20, ctx = null) {
+    if (ctx?.aaHasScreenShake)
+        return;
     return getSocket().executeForEveryone("attackShake", { duration, strength });
 }
 function panToFitTokensForEveryone(tokens, duration = 1000) {
@@ -730,7 +982,9 @@ function emitAttackSynthSfx(payload) {
         playAttackSynthSfxLocal(payload);
     }
 }
-function playSwoosh(token, isHeavy = false) {
+function playSwoosh(token, isHeavy = false, ctx = null) {
+    if (ctx?.aaHasPrimarySound)
+        return;
     const db = isHeavy ? SOUND_PATHS.SWOOSH_HEAVY : SOUND_PATHS.SWOOSH_LIGHT;
     if (canPlaySequencerFile(db)) {
         new Sequence({ softFail: true }).sound().file(db).volume(0.5).play();
@@ -739,7 +993,9 @@ function playSwoosh(token, isHeavy = false) {
         emitAttackSynthSfx({ kind: "swoosh", isHeavy, volume: 0.35 });
     }
 }
-function playImpact(token, damageType = "bludgeoning") {
+function playImpact(token, damageType = "bludgeoning", ctx = null) {
+    if (ctx?.aaHasSecondarySound)
+        return;
     const db = damageType === "slashing" || damageType === "piercing"
         ? SOUND_PATHS.IMPACT_SLASH
         : SOUND_PATHS.IMPACT_BLUDGEON;
@@ -776,7 +1032,7 @@ function triggerHitFlash(mesh, targetToken, damageType, isCrit = false) {
     });
 }
 function playHitVFX(pos, ctx, { mirrorSlash = false, scaleMult = 1 } = {}) {
-    if (!hasSequencer())
+    if (ctx?.aaHasVisual || !hasSequencer())
         return;
     const sizeCells = Math.min(3.2, Math.max(1.3, pos.tgtFootprintCells * 1.48)) * scaleMult;
     const aimPoint = { x: pos.c2.x + pos.dX * 120, y: pos.c2.y + pos.dY * 120 };
@@ -864,7 +1120,7 @@ function playBlockVFX(pos, ctx) {
     void seq.play();
 }
 function playCritVFX(pos, ctx, { crossSlash = false } = {}) {
-    if (!hasSequencer())
+    if (ctx?.aaHasVisual || !hasSequencer())
         return;
     const sizeCells = Math.min(3.8, Math.max(1.85, pos.tgtFootprintCells * 1.95));
     const aimPoint = { x: pos.c2.x + pos.dX * 120, y: pos.c2.y + pos.dY * 120 };
@@ -911,7 +1167,7 @@ function playCritVFX(pos, ctx, { crossSlash = false } = {}) {
     void seq.play();
 }
 function playCastAuraVFX(pos, ctx) {
-    if (!hasSequencer())
+    if (ctx?.aaHasVisual || !hasSequencer())
         return;
     const castPt = {
         x: pos.c1.x + pos.dX * pos.r1 * 0.45,
@@ -929,7 +1185,7 @@ function playCastAuraVFX(pos, ctx) {
         .play();
 }
 function launchProjectileVFX(fromPt, toPt, flightMs, ctx, isCrit = false) {
-    if (!hasSequencer())
+    if (ctx?.aaHasVisual || !hasSequencer())
         return;
     const isSpell = ctx.delivery === "rsak";
     const file = isSpell ? ATTACK_VFX.SPELL_BOLT : ATTACK_VFX.ARROW;
@@ -951,10 +1207,10 @@ function launchProjectileVFX(fromPt, toPt, flightMs, ctx, isCrit = false) {
     void seq.play();
 }
 async function playCriticalImpact(mesh, token2, pos, ctx, opts = {}) {
-    playImpact(token2, ctx.damageType);
+    playImpact(token2, ctx.damageType, ctx);
     triggerHitFlash(mesh, token2, ctx.damageType, true);
     playCritVFX(pos, ctx, opts);
-    shakeForEveryone(480, 40);
+    shakeForEveryone(480, 40, ctx);
 }
 // --- Integration with Token-Displayed Weapons & Shields (Dynamic Items) ---
 function triggerDynamicItemAttack(token1, token2, item, attackState, ctx) {
@@ -1044,7 +1300,7 @@ function pickVariant(arr, key) {
 // All deltas (x, y, scaleX, scaleY, angle) MUST sum strictly to zero.
 const SLASH_HIT_VARIANTS = [
     // 1. Flanking diagonal arc slash
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(330, async (mesh, token1, token2, pos, ctx) => {
         const side = ctx.comboSide || 1;
         const w = ANIM_DIST.WINDUP * pos.atkUnit;
         const reach = pos.reachPx;
@@ -1059,7 +1315,7 @@ const SLASH_HIT_VARIANTS = [
             scaleY: -0.05,
             angle: -lean
         }, { duration: 195, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, {
             x: pos.dX * (w + reach) + pos.perpX * (arcLat * 1.35),
             y: pos.dY * (w + reach) + pos.perpY * (arcLat * 1.35),
@@ -1067,10 +1323,10 @@ const SLASH_HIT_VARIANTS = [
             scaleY: 0.12,
             angle: lean * 2
         }, { duration: 135, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx, { mirrorSlash: side < 0 });
-        shakeForEveryone(290, 26);
+        shakeForEveryone(290, 26, ctx);
         const tgtTilt = 6 * pos.leanSign;
         await mesh.animate(token2, { x: pos.dX * kb, y: pos.dY * kb, scaleX: 0.05, scaleY: -0.06, angle: tgtTilt }, { duration: 140, easing: "easeOutCubic" });
         await sleep(30 * recK);
@@ -1084,9 +1340,9 @@ const SLASH_HIT_VARIANTS = [
                 angle: -lean
             }, { duration: Math.round(520 * recK), easing: "easeOutCubic" })
         ]);
-    },
+    }),
     // 2. Snappy counter-cleaving lunge
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(240, async (mesh, token1, token2, pos, ctx) => {
         const side = -(ctx.comboSide || 1);
         const w = ANIM_DIST.WINDUP * 0.85 * pos.atkUnit;
         const reach = pos.reachPx;
@@ -1095,12 +1351,12 @@ const SLASH_HIT_VARIANTS = [
         const lean = 7 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w + pos.perpX * arcLat, y: -pos.dY * w + pos.perpY * arcLat, scale: -0.04, angle: -lean }, { duration: 135, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach) - pos.perpX * arcLat, y: pos.dY * (w + reach) - pos.perpY * arcLat, scale: 0.10, angle: lean * 2 }, { duration: 105, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx, { mirrorSlash: side < 0 });
-        shakeForEveryone(260, 24);
+        shakeForEveryone(260, 24, ctx);
         const tgtTilt = 5 * pos.leanSign;
         await mesh.animate(token2, { x: pos.dX * kb, y: pos.dY * kb, scaleX: 0.04, scaleY: -0.05, angle: tgtTilt }, { duration: 130, easing: "easeOutCubic" });
         await sleep(25 * recK);
@@ -1108,23 +1364,23 @@ const SLASH_HIT_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * kb, y: -pos.dY * kb, scaleX: -0.04, scaleY: 0.05, angle: -tgtTilt }, { duration: Math.round(450 * recK), easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scale: -0.06, angle: -lean }, { duration: Math.round(480 * recK), easing: "easeOutCubic" })
         ]);
-    }
+    })
 ];
 const PIERCE_HIT_VARIANTS = [
     // 1. Surgical straight-line needle thrust with crisp snap
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(230, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * 0.72 * pos.atkUnit;
         const reach = pos.reachPx * 1.04;
         const kb = ANIM_DIST.KNOCKBACK * 0.88 * pos.gridSize;
         const lean = 6 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w, scaleX: -0.04, scaleY: -0.04, angle: -lean }, { duration: 140, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach), scaleX: 0.10, scaleY: 0.10, angle: lean * 2 }, { duration: 90, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx);
-        shakeForEveryone(240, 22);
+        shakeForEveryone(240, 22, ctx);
         const tgtTilt = 5 * pos.leanSign;
         await mesh.animate(token2, { x: pos.dX * kb, y: pos.dY * kb, scaleX: 0.04, scaleY: -0.06, angle: tgtTilt }, { duration: 130, easing: "easeOutCubic" });
         await sleep(25 * recK);
@@ -1132,9 +1388,9 @@ const PIERCE_HIT_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * kb, y: -pos.dY * kb, scaleX: -0.04, scaleY: 0.06, angle: -tgtTilt }, { duration: Math.round(440 * recK), easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scaleX: -0.06, scaleY: -0.06, angle: -lean }, { duration: Math.round(470 * recK), easing: "easeOutCubic" })
         ]);
-    },
+    }),
     // 2. Fencing sidestep into diagonal lunge
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(225, async (mesh, token1, token2, pos, ctx) => {
         const side = ctx.comboSide || 1;
         const stepLat = pos.gridSize * 0.18 * side;
         const w = ANIM_DIST.WINDUP * 0.55 * pos.atkUnit;
@@ -1143,23 +1399,23 @@ const PIERCE_HIT_VARIANTS = [
         const lean = 7 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w + pos.perpX * stepLat, y: -pos.dY * w + pos.perpY * stepLat, scale: -0.03, angle: -lean * 0.5 }, { duration: 130, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach) - pos.perpX * stepLat, y: pos.dY * (w + reach) - pos.perpY * stepLat, scale: 0.09, angle: lean * 1.5 }, { duration: 95, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx);
-        shakeForEveryone(230, 20);
+        shakeForEveryone(230, 20, ctx);
         await mesh.animate(token2, { x: pos.dX * kb, y: pos.dY * kb, scale: -0.04 }, { duration: 125, easing: "easeOutCubic" });
         await sleep(25 * recK);
         await Promise.all([
             mesh.animate(token2, { x: -pos.dX * kb, y: -pos.dY * kb, scale: 0.04 }, { duration: Math.round(430 * recK), easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scale: -0.06, angle: -lean }, { duration: Math.round(460 * recK), easing: "easeOutCubic" })
         ]);
-    }
+    })
 ];
 const HEAVY_CRUSH_HIT_VARIANTS = [
     // 1. Heavy overhead windup with tension pause and crushing smash
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(410, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * 1.22 * pos.atkUnit;
         const reach = pos.reachPx;
         const liftY = pos.gridSize * 0.16;
@@ -1168,12 +1424,12 @@ const HEAVY_CRUSH_HIT_VARIANTS = [
         const recK = ctx.fastRecovery ? 0.6 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w - liftY, scaleX: -0.05, scaleY: 0.06, angle: -lean }, { duration: 225, easing: "easeOutCubic" });
         await sleep(45 * recK);
-        playSwoosh(token1, true);
+        playSwoosh(token1, true, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach) + liftY, scaleX: 0.14, scaleY: 0.04, angle: lean * 2.1 }, { duration: 140, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx, { scaleMult: 1.15 });
-        shakeForEveryone(380, 35);
+        shakeForEveryone(380, 35, ctx);
         const tgtTilt = 8 * pos.leanSign;
         await mesh.animate(token2, { x: pos.dX * kb, y: pos.dY * kb, scaleX: 0.08, scaleY: -0.09, angle: tgtTilt }, { duration: 175, easing: "easeOutCubic" });
         await sleep(55 * recK);
@@ -1181,21 +1437,21 @@ const HEAVY_CRUSH_HIT_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * kb, y: -pos.dY * kb, scaleX: -0.08, scaleY: 0.09, angle: -tgtTilt }, { duration: Math.round(620 * recK), easing: "easeOutQuart" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scaleX: -0.09, scaleY: -0.10, angle: -lean * 1.1 }, { duration: Math.round(660 * recK), easing: "easeOutQuart" })
         ]);
-    },
+    }),
     // 2. Battering shoulder/hammer breach
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(310, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * 0.95 * pos.atkUnit;
         const reach = pos.reachPx;
         const kb = ANIM_DIST.KNOCKBACK * 1.1 * pos.gridSize;
         const lean = 9 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.58 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w, scaleX: 0.04, scaleY: -0.06, angle: -lean }, { duration: 185, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach), scaleX: 0.06, scaleY: 0.14, angle: lean * 2 }, { duration: 125, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx, { scaleMult: 1.05 });
-        shakeForEveryone(320, 30);
+        shakeForEveryone(320, 30, ctx);
         const tgtTilt = 7 * pos.leanSign;
         await mesh.animate(token2, { x: pos.dX * kb, y: pos.dY * kb, scaleX: 0.06, scaleY: -0.07, angle: tgtTilt }, { duration: 165, easing: "easeOutCubic" });
         await sleep(45 * recK);
@@ -1203,12 +1459,12 @@ const HEAVY_CRUSH_HIT_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * kb, y: -pos.dY * kb, scaleX: -0.06, scaleY: 0.07, angle: -tgtTilt }, { duration: Math.round(560 * recK), easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scaleX: -0.10, scaleY: -0.08, angle: -lean }, { duration: Math.round(590 * recK), easing: "easeOutCubic" })
         ]);
-    }
+    })
 ];
 // --- 3 Critical Hit Choreographies ---
 const CRIT_VARIANTS = [
     // Variant 1: "Crushing Execution" — deep paused windup, leaping overhead slam + hit-stop
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(480, async (mesh, token1, token2, pos, ctx) => {
         const cw = ANIM_DIST.CRIT_WINDUP * pos.atkUnit;
         const reach = pos.critReachPx;
         const liftY = pos.gridSize * 0.24;
@@ -1217,7 +1473,7 @@ const CRIT_VARIANTS = [
         const recK = ctx.fastRecovery ? 0.65 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * cw, y: -pos.dY * cw, scaleX: 0.04, scaleY: -0.08, angle: -lean }, { duration: 270, easing: "easeOutCubic" });
         await sleep(95);
-        playSwoosh(token1, true);
+        playSwoosh(token1, true, ctx);
         await mesh.animate(token1, { x: pos.dX * (cw + reach), y: pos.dY * (cw + reach) - liftY * 0.2, scaleX: 0.10, scaleY: 0.22, angle: lean * 2.2 }, { duration: 115, easing: "easeInCubic" });
         await playCriticalImpact(mesh, token2, pos, ctx);
         // Hit-stop at peak impact before knockback
@@ -1232,9 +1488,9 @@ const CRIT_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * ckb, y: -pos.dY * ckb, scaleX: -0.09, scaleY: 0.11, angle: -tgtTilt }, { duration: Math.round(720 * recK), easing: "easeOutQuart" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scaleX: -0.10, scaleY: -0.08, angle: -lean * 1.2 }, { duration: Math.round(760 * recK), easing: "easeOutQuart" })
         ]);
-    },
+    }),
     // Variant 2: "Lightning Draw" (Iaido) — focused stillness, flanking dash, instant slash + delayed burst
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(435, async (mesh, token1, token2, pos, ctx) => {
         const side = ctx.comboSide || 1;
         const cw = ANIM_DIST.CRIT_WINDUP * 0.75 * pos.atkUnit;
         const reach = pos.critReachPx * 1.05;
@@ -1244,7 +1500,7 @@ const CRIT_VARIANTS = [
         const recK = ctx.fastRecovery ? 0.65 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * cw - pos.perpX * lat, y: -pos.dY * cw - pos.perpY * lat, scale: -0.06, angle: -lean }, { duration: 240, easing: "easeOutCubic" });
         await sleep(110);
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, {
             x: pos.dX * (cw + reach) + pos.perpX * (lat * 1.5),
             y: pos.dY * (cw + reach) + pos.perpY * (lat * 1.5),
@@ -1268,9 +1524,9 @@ const CRIT_VARIANTS = [
                 angle: -lean * 1.2
             }, { duration: Math.round(740 * recK), easing: "easeOutQuart" })
         ]);
-    },
+    }),
     // Variant 3: "Flurry Breakthrough" — rapid staggering opener + reset + finishing blow
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(230, async (mesh, token1, token2, pos, ctx) => {
         const side = ctx.comboSide || 1;
         const w1 = ANIM_DIST.WINDUP * 0.65 * pos.atkUnit;
         const r1 = pos.reachPx * 0.92;
@@ -1283,12 +1539,12 @@ const CRIT_VARIANTS = [
         const recK = ctx.fastRecovery ? 0.65 : 1.0;
         // Strike 1: rapid staggering opener
         await mesh.animate(token1, { x: -pos.dX * w1 + pos.perpX * lat, y: -pos.dY * w1 + pos.perpY * lat, scale: -0.04, angle: -lean }, { duration: 135, easing: "easeOutCubic" });
-        playSwoosh(token1, false);
+        playSwoosh(token1, false, ctx);
         await mesh.animate(token1, { x: pos.dX * (w1 + r1) - pos.perpX * lat, y: pos.dY * (w1 + r1) - pos.perpY * lat, scale: 0.10, angle: lean * 1.8 }, { duration: 95, easing: "easeInCubic" });
-        playImpact(token2, ctx.damageType);
+        playImpact(token2, ctx.damageType, ctx);
         triggerHitFlash(mesh, token2, ctx.damageType, false);
         playHitVFX(pos, ctx, { mirrorSlash: false, scaleMult: 0.9 });
-        shakeForEveryone(180, 18);
+        shakeForEveryone(180, 18, ctx);
         // Brief recoil to chamber the decisive second strike while the target flinches
         await Promise.all([
             mesh.animate(token2, { x: pos.dX * flinch, y: pos.dY * flinch }, { duration: 125, easing: "easeOutCubic" }),
@@ -1296,7 +1552,7 @@ const CRIT_VARIANTS = [
         ]);
         await sleep(55);
         // Strike 2: devastating finisher (aim VFX at target's flinched center!)
-        playSwoosh(token1, true);
+        playSwoosh(token1, true, ctx);
         const deltaStrike2 = reachFinal - r1 + recoilMid;
         await mesh.animate(token1, { x: pos.dX * deltaStrike2 + pos.perpX * lat, y: pos.dY * deltaStrike2 + pos.perpY * lat, scale: 0.16, angle: lean * 2.2 }, { duration: 105, easing: "easeInCubic" });
         const posFlinched = {
@@ -1313,18 +1569,18 @@ const CRIT_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * totalTargetDisp, y: -pos.dY * totalTargetDisp, scaleX: -0.08, scaleY: 0.10, angle: -tgtTilt }, { duration: Math.round(700 * recK), easing: "easeOutQuart" }),
             mesh.animate(token1, { x: -pos.dX * reachFinal, y: -pos.dY * reachFinal, scale: -0.12, angle: -lean * 1.2 }, { duration: Math.round(740 * recK), easing: "easeOutQuart" })
         ]);
-    }
+    })
 ];
 const MISS_VARIANTS = [
     // Variant A: distance break — strike cuts air while the defender springs back
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(345, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * pos.atkUnit;
         const reach = pos.missReachPx;
         const d = ANIM_DIST.DODGE * pos.gridSize;
         const lean = 7 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w, scale: -0.04, angle: -lean }, { duration: 185, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         const dodgeIn = mesh.animate(token2, { x: pos.dX * d, y: pos.dY * d, scale: -0.04, angle: 5 * pos.leanSign }, { duration: 225, easing: "easeOutCubic" });
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach), scale: 0.08, angle: lean * 2 }, { duration: 160, easing: "easeIn" });
         playMissSound();
@@ -1334,9 +1590,9 @@ const MISS_VARIANTS = [
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scale: -0.04, angle: -lean }, { duration: Math.round(520 * recK), easing: "easeOutCubic" }),
             mesh.animate(token2, { x: -pos.dX * d, y: -pos.dY * d, scale: 0.04, angle: -5 * pos.leanSign }, { duration: Math.round(480 * recK), easing: "easeOutCubic" })
         ]);
-    },
+    }),
     // Variant B: lateral slip off the attack line
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(310, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * pos.atkUnit;
         const reach = pos.missReachPx;
         const d = ANIM_DIST.DODGE * pos.gridSize;
@@ -1344,7 +1600,7 @@ const MISS_VARIANTS = [
         const lean = 7 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w, scale: -0.04, angle: -lean }, { duration: 165, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         const dodgeSide = mesh.animate(token2, { x: pos.perpX * d * side, y: pos.perpY * d * side, scale: -0.04, angle: 7 * side }, { duration: 205, easing: "easeOutCubic" });
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach), scale: 0.08, angle: lean * 2 }, { duration: 145, easing: "easeIn" });
         playMissSound();
@@ -1354,14 +1610,14 @@ const MISS_VARIANTS = [
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scale: -0.04, angle: -lean }, { duration: Math.round(540 * recK), easing: "easeOutCubic" }),
             mesh.animate(token2, { x: -pos.perpX * d * side, y: -pos.perpY * d * side, scale: 0.04, angle: -7 * side }, { duration: Math.round(490 * recK), easing: "easeOutCubic" })
         ]);
-    },
+    }),
     // Variant C: preemptive backstep as the lunge begins
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(200, async (mesh, token1, token2, pos, ctx) => {
         const reach = pos.missReachPx;
         const d = ANIM_DIST.DODGE * 1.1 * pos.gridSize;
         const lean = 6 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         const dodgeBack = mesh.animate(token2, { x: pos.dX * d, y: pos.dY * d, scale: -0.04 }, { duration: 200, easing: "easeOutCubic" });
         await mesh.animate(token1, { x: pos.dX * reach, y: pos.dY * reach, scale: 0.06, angle: lean }, { duration: 200, easing: "easeOutCubic" });
         playMissSound();
@@ -1371,11 +1627,11 @@ const MISS_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * d, y: -pos.dY * d, scale: 0.04 }, { duration: Math.round(500 * recK), easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * reach, y: -pos.dY * reach, scale: -0.06, angle: -lean }, { duration: Math.round(540 * recK), easing: "easeOutCubic" })
         ]);
-    }
+    })
 ];
 const BLOCK_VARIANTS = [
     // Variant A: solid shield block — blow crashes into the shield with sparks and hard attacker rebound
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(285, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * pos.atkUnit;
         const reach = pos.blockReachPx;
         const brace = ANIM_DIST.BLOCK_BRACE * pos.gridSize;
@@ -1383,12 +1639,12 @@ const BLOCK_VARIANTS = [
         const lean = 8 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w, scale: -0.04, angle: -lean }, { duration: 165, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach), scale: 0.09, angle: lean * 2 }, { duration: 120, easing: "easeInCubic" });
         playBlockSound();
         playBlockVFX(pos, ctx);
         mesh.flash?.(token2, { color: "#ffe29a", duration: 85, intensity: 0.5 });
-        shakeForEveryone(220, 19);
+        shakeForEveryone(220, 19, ctx);
         await Promise.all([
             mesh.animate(token2, { x: pos.dX * brace, y: pos.dY * brace, scaleX: 0.04, scaleY: -0.04 }, { duration: 95, easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * rebound, y: -pos.dY * rebound, scale: -0.05, angle: -lean * 1.4 }, { duration: 115, easing: "easeOutCubic" })
@@ -1399,9 +1655,9 @@ const BLOCK_VARIANTS = [
             mesh.animate(token2, { x: -pos.dX * brace, y: -pos.dY * brace, scaleX: -0.04, scaleY: 0.04 }, { duration: Math.round(410 * recK), easing: "easeOutCubic" }),
             mesh.animate(token1, { x: -pos.dX * rem, y: -pos.dY * rem, angle: lean * 0.4 }, { duration: Math.round(470 * recK), easing: "easeOutCubic" })
         ]);
-    },
+    }),
     // Variant B: glancing shield deflection — blade is guided aside along an arc
-    async (mesh, token1, token2, pos, ctx) => {
+    withImpactMs(280, async (mesh, token1, token2, pos, ctx) => {
         const w = ANIM_DIST.WINDUP * pos.atkUnit;
         const reach = pos.blockReachPx;
         const brace = ANIM_DIST.BLOCK_BRACE * 0.85 * pos.gridSize;
@@ -1411,12 +1667,12 @@ const BLOCK_VARIANTS = [
         const lean = 8 * pos.leanSign;
         const recK = ctx.fastRecovery ? 0.55 : 1.0;
         await mesh.animate(token1, { x: -pos.dX * w, y: -pos.dY * w, scale: -0.04, angle: -lean }, { duration: 160, easing: "easeOutCubic" });
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await mesh.animate(token1, { x: pos.dX * (w + reach), y: pos.dY * (w + reach), scale: 0.09, angle: lean * 2 }, { duration: 120, easing: "easeInCubic" });
         playBlockSound();
         playBlockVFX(pos, ctx);
         mesh.flash?.(token2, { color: "#ffe29a", duration: 85, intensity: 0.5 });
-        shakeForEveryone(200, 17);
+        shakeForEveryone(200, 17, ctx);
         await Promise.all([
             mesh.animate(token2, { x: pos.dX * brace, y: pos.dY * brace }, { duration: 95, easing: "easeOutCubic" }),
             mesh.animate(token1, {
@@ -1436,7 +1692,7 @@ const BLOCK_VARIANTS = [
                 angle: lean * 0.3
             }, { duration: Math.round(470 * recK), easing: "easeOutCubic" })
         ]);
-    }
+    })
 ];
 function selectMeleeHitPool(ctx) {
     if (ctx.delivery === "msak")
@@ -1450,11 +1706,15 @@ function selectMeleeHitPool(ctx) {
 }
 // --- Ranged & Spell Bolt Choreography ("rwak" / "rsak") ---
 async function animateRangedOrSpellBolt(token1, token2, pos, animDuration, attackState, ctx) {
-    const mesh = showstopper.meshAnim;
+    const mesh = ctx.mesh ?? showstopper.meshAnim;
     const isSpell = ctx.delivery === "rsak";
     const isCrit = attackState === "crit";
+    const isHitOutcome = attackState === "hit" || isCrit;
     const recK = ctx.fastRecovery ? 0.58 : 1.0;
-    const waitMs = ctx.isFollowUp ? 45 : (animDuration / CFG.WINDUP_DIVISOR);
+    const baseWaitMs = ctx.isFollowUp ? 45 : (animDuration / CFG.WINDUP_DIVISOR);
+    const drawMs = mesh ? (isCrit ? 290 : 160) : 0;
+    const aaReleaseOffsetMs = Math.round(220 / (ctx.aaPlaybackRate || 1)) + (ctx.aaPrimaryDelayMs || 0) + (ctx.aaSourceWaitMs || 0);
+    const waitMs = syncAAReleaseWithChoreo(ctx, token2, isHitOutcome, baseWaitMs, drawMs, aaReleaseOffsetMs);
     await sleep(waitMs);
     triggerDynamicItemAttack(token1, token2, ctx.item, attackState, ctx);
     const drawDist = pos.atkUnit * (isCrit ? 0.24 : 0.16);
@@ -1471,8 +1731,10 @@ async function animateRangedOrSpellBolt(token1, token2, pos, animDuration, attac
             await sleep(70);
     }
     // 2. Release projectile + shooter recoil
-    playSwoosh(token1, isCrit || ctx.isHeavy);
-    const flightMs = Math.round(Math.min(460, Math.max(240, (pos.distance / Math.max(60, pos.gridSize)) * (isCrit ? 65 : 78))));
+    playSwoosh(token1, isCrit || ctx.isHeavy, ctx);
+    const flightMs = ctx.aaHasVisual
+        ? Math.round((isSpell ? 390 : 410) / (ctx.aaPlaybackRate || 1))
+        : Math.round(Math.min(460, Math.max(240, (pos.distance / Math.max(60, pos.gridSize)) * (isCrit ? 65 : 78))));
     const fromPt = {
         x: pos.c1.x + pos.dX * pos.r1 * 0.65,
         y: pos.c1.y + pos.dY * pos.r1 * 0.65
@@ -1521,7 +1783,7 @@ async function animateRangedOrSpellBolt(token1, token2, pos, animDuration, attac
         playBlockSound();
         playBlockVFX(pos, ctx);
         mesh?.flash?.(token2, { color: "#ffe29a", duration: 75, intensity: 0.45 });
-        shakeForEveryone(190, 16);
+        shakeForEveryone(190, 16, ctx);
         if (mesh) {
             const brace = ANIM_DIST.BLOCK_BRACE * pos.gridSize;
             await mesh.animate(token2, { x: pos.dX * brace, y: pos.dY * brace }, { duration: 95, easing: "easeOutCubic" });
@@ -1545,10 +1807,10 @@ async function animateRangedOrSpellBolt(token1, token2, pos, animDuration, attac
         return;
     }
     // Standard projectile / spell hit
-    playImpact(token2, ctx.damageType);
+    playImpact(token2, ctx.damageType, ctx);
     triggerHitFlash(mesh, token2, ctx.damageType, false);
     playHitVFX(pos, ctx);
-    shakeForEveryone(260, 24);
+    shakeForEveryone(260, 24, ctx);
     if (mesh) {
         const kb = ANIM_DIST.KNOCKBACK * 0.9 * pos.gridSize;
         const tgtTilt = 6 * pos.leanSign;
@@ -1559,8 +1821,27 @@ async function animateRangedOrSpellBolt(token1, token2, pos, animDuration, attac
     await shooterKickAndSettle;
 }
 async function animateMeleeAttack(token1, token2, pos, animDuration, attackState, ctx) {
-    const mesh = showstopper.meshAnim;
-    const waitMs = ctx.isFollowUp ? 45 : (animDuration / CFG.WINDUP_DIVISOR);
+    const mesh = ctx.mesh ?? showstopper.meshAnim;
+    const isHitOutcome = attackState === "hit" || attackState === "crit";
+    let chosenFn = null;
+    if (attackState === "crit") {
+        const aaRepeats = ctx.aaHasVisual ? (Number(ctx.aaData?.primary?.options?.repeat) || 1) : 1;
+        const critPool = ctx.aaHasVisual && aaRepeats < 2 ? CRIT_VARIANTS.slice(0, 2) : CRIT_VARIANTS;
+        chosenFn = pickVariant(critPool, "crit");
+    }
+    else if (attackState === "hit") {
+        const pool = selectMeleeHitPool(ctx);
+        chosenFn = pickVariant(pool, `hit:${ctx.damageType}:${ctx.isHeavy ? "h" : "n"}`);
+    }
+    else if (attackState === "blocked") {
+        chosenFn = pickVariant(BLOCK_VARIANTS, "block");
+    }
+    else {
+        chosenFn = pickVariant(MISS_VARIANTS, "miss");
+    }
+    const baseWaitMs = ctx.isFollowUp ? 45 : (animDuration / CFG.WINDUP_DIVISOR);
+    const aaStrikePeakMs = Math.round((ctx.isHeavy ? 480 : 410) / (ctx.aaPlaybackRate || 1)) + (ctx.aaPrimaryDelayMs || 0) + (ctx.aaSourceWaitMs || 0);
+    const waitMs = syncAAReleaseWithChoreo(ctx, token2, isHitOutcome, baseWaitMs, chosenFn?.impactMs ?? 300, aaStrikePeakMs);
     await sleep(waitMs);
     if (ctx.delivery === "msak") {
         playCastAuraVFX(pos, ctx);
@@ -1568,12 +1849,12 @@ async function animateMeleeAttack(token1, token2, pos, animDuration, attackState
     }
     triggerDynamicItemAttack(token1, token2, ctx.item, attackState, ctx);
     if (!mesh) {
-        playSwoosh(token1, ctx.isHeavy);
+        playSwoosh(token1, ctx.isHeavy, ctx);
         await sleep(150);
         if (attackState === "crit")
             await playCriticalImpact(null, token2, pos, ctx);
         else if (attackState === "hit") {
-            playImpact(token2, ctx.damageType);
+            playImpact(token2, ctx.damageType, ctx);
             playHitVFX(pos, ctx);
         }
         else if (attackState === "blocked") {
@@ -1584,23 +1865,7 @@ async function animateMeleeAttack(token1, token2, pos, animDuration, attackState
             playMissSound();
         return;
     }
-    switch (attackState) {
-        case "crit":
-            await pickVariant(CRIT_VARIANTS, "crit")(mesh, token1, token2, pos, ctx);
-            break;
-        case "hit": {
-            const pool = selectMeleeHitPool(ctx);
-            await pickVariant(pool, `hit:${ctx.damageType}:${ctx.isHeavy ? "h" : "n"}`)(mesh, token1, token2, pos, ctx);
-            break;
-        }
-        case "blocked":
-            await pickVariant(BLOCK_VARIANTS, "block")(mesh, token1, token2, pos, ctx);
-            break;
-        case "miss":
-        default:
-            await pickVariant(MISS_VARIANTS, "miss")(mesh, token1, token2, pos, ctx);
-            break;
-    }
+    await chosenFn(mesh, token1, token2, pos, ctx);
 }
 export function resolveToken(ref) {
     if (!ref)
@@ -1662,14 +1927,17 @@ function getItemAnimContext(item, delivery = "mwak") {
  * choreography (melee, ranged, or spell).
  */
 export async function playAttackAnimation({ attacker, target, attackState, item = null, delivery = null }) {
-    if (!attacker || !target || attacker.id === target.id)
+    if (!attacker || !target || attacker.id === target.id) {
+        if (attacker?.id)
+            flushUnclaimedAATicketsForToken(attacker.id);
         return;
+    }
     const resolvedDelivery = delivery ?? classifyItemAttack(item, item?.system?.actionType, null) ?? "mwak";
     const settings = getAnimSettings();
-    if (!shouldPlayAnimation(settings))
+    if (!shouldPlayAnimation(settings) || !shouldPlayAttackAnim(settings, attackState, resolvedDelivery)) {
+        flushUnclaimedAATicketsForToken(attacker.id);
         return;
-    if (!shouldPlayAttackAnim(settings, attackState, resolvedDelivery))
-        return;
+    }
     return enqueueTokenJob(attacker.id, () => {
         const pos = computePosBetween(attacker, target);
         return runAttackChoreography({
@@ -1690,6 +1958,53 @@ async function runAttackChoreography({ attacker, target, pos, attackState, item,
     const { comboIndex, comboSide } = nextComboState(token1.id);
     const isFollowUp = comboIndex > 0;
     const hasMoreQueued = () => (pendingTokenJobs.get(token1.id) ?? 0) > 1;
+    const aaTicket = aaSyncActive(settings) ? claimAATicket(token1.id, item, delivery) : null;
+    const aaData = aaTicket?.animationData ?? null;
+    const hasAA = Boolean(aaTicket && aaData);
+    const aaHasVisual = hasAA && aaData?.menu !== "sound";
+    const aaPlaybackRate = hasAA
+        ? Math.max(0.25, Math.min(4, Number(aaData?.primary?.options?.playbackRate ??
+            aaData?.data?.projectile?.options?.playbackRate ??
+            aaData?.data?.options?.playbackRate) || 1))
+        : 1;
+    const aaPrimaryDelayMs = hasAA && !aaData?.primary?.options?.isWait
+        ? Math.max(0, Number(aaData?.primary?.options?.delay) || 0)
+        : 0;
+    const aaSourceWaitMs = hasAA && aaData?.source?.enable && aaData?.source?.options?.isWait
+        ? Math.max(0, 650 + (Number(aaData?.source?.options?.delay) || 0))
+        : 0;
+    const hasPlayableAASound = (snd) => Boolean(snd?.enable && snd?.file && canPlaySequencerFile(snd.file));
+    const aaHasPrimarySound = hasAA && (hasPlayableAASound(aaData?.primary?.sound) ||
+        hasPlayableAASound(aaData?.soundOnly?.sound) ||
+        hasPlayableAASound(aaData?.data?.sound) ||
+        hasPlayableAASound(aaData?.data?.projectile?.sound));
+    const aaHasSecondarySound = hasAA && ((aaData?.secondary?.enable && hasPlayableAASound(aaData?.secondary?.sound)) ||
+        (aaData?.target?.enable && hasPlayableAASound(aaData?.target?.sound)) ||
+        hasPlayableAASound(aaData?.data?.explosion?.sound));
+    const aaHasMotionSource = hasAA && Boolean(aaData?.motion?.source?.enable);
+    const aaHasMotionTarget = hasAA && Boolean(aaData?.motion?.target?.enable);
+    const aaHasScreenShake = hasAA && Boolean(aaData?.screenShake?.enable);
+    const rawMesh = showstopper.meshAnim;
+    const choreoMesh = !rawMesh
+        ? null
+        : (!aaHasMotionSource && !aaHasMotionTarget)
+            ? rawMesh
+            : {
+                animate(tok, props, opts = {}) {
+                    const id = tok?.id ?? tok?.document?.id;
+                    if ((aaHasMotionSource && id === token1.id) || (aaHasMotionTarget && id === token2.id)) {
+                        return sleep(opts?.duration || 0);
+                    }
+                    return rawMesh.animate(tok, props, opts);
+                },
+                flash(tok, opts) {
+                    return rawMesh.flash?.(tok, opts);
+                },
+                reset(tok, dur, opts) {
+                    return rawMesh.reset?.(tok, dur, opts);
+                }
+            };
+    let animCtx = null;
     try {
         const sheet = token1.actor?.sheet;
         if (sheet?.rendered && !minimizedSheetsByToken.has(token1.id)) {
@@ -1700,8 +2015,14 @@ async function runAttackChoreography({ attacker, target, pos, attackState, item,
         }
         const { itemProps, isHeavy, damageType } = getItemAnimContext(item, delivery);
         const animDuration = getAnimDuration(itemProps, delivery);
-        const envelopeMs = getCinematicEnvelopeDuration(animDuration, attackState, isFollowUp);
-        const animCtx = {
+        const aaExtraEnvelopeMs = hasAA
+            ? Math.max(0, getAAGlobalDelayMs() - 100) +
+                aaPrimaryDelayMs +
+                aaSourceWaitMs +
+                (aaPlaybackRate < 1 ? Math.round(500 / aaPlaybackRate - 500) : 0)
+            : 0;
+        const envelopeMs = getCinematicEnvelopeDuration(animDuration, attackState, isFollowUp) + aaExtraEnvelopeMs;
+        animCtx = {
             item,
             delivery,
             isHeavy,
@@ -1709,6 +2030,20 @@ async function runAttackChoreography({ attacker, target, pos, attackState, item,
             comboIndex,
             comboSide,
             isFollowUp,
+            mesh: choreoMesh,
+            aaTicket,
+            aaData,
+            hasAA,
+            aaHasVisual,
+            aaPlaybackRate,
+            aaPrimaryDelayMs,
+            aaSourceWaitMs,
+            aaHasPrimarySound,
+            aaHasSecondarySound,
+            aaHasMotionSource,
+            aaHasMotionTarget,
+            aaHasScreenShake,
+            aaTicketReleaseTimer: null,
             get fastRecovery() {
                 return hasMoreQueued();
             }
@@ -1735,6 +2070,13 @@ async function runAttackChoreography({ attacker, target, pos, attackState, item,
         console.error(CFG.LOG_PREFIX, "Animation error:", err);
     }
     finally {
+        if (animCtx?.aaTicketReleaseTimer) {
+            clearTimeout(animCtx.aaTicketReleaseTimer);
+            animCtx.aaTicketReleaseTimer = null;
+        }
+        if (aaTicket && !aaTicket.settled) {
+            aaTicket.release({ isHit: attackState === "hit" || attackState === "crit", target: token2 });
+        }
         touchComboEnd(token1.id);
         if (darkenName) {
             if (hasMoreQueued()) {
@@ -1754,17 +2096,21 @@ async function runAttackChoreography({ attacker, target, pos, attackState, item,
         }
         const mesh = showstopper.meshAnim;
         if (mesh) {
-            try {
-                mesh.reset(token1, 220).catch(() => { });
+            if (!aaHasMotionSource) {
+                try {
+                    mesh.reset(token1, 220).catch(() => { });
+                }
+                catch (err) {
+                    console.error(CFG.LOG_PREFIX, "Mesh reset failed:", err);
+                }
             }
-            catch (err) {
-                console.error(CFG.LOG_PREFIX, "Mesh reset failed:", err);
-            }
-            try {
-                mesh.reset(token2, 220).catch(() => { });
-            }
-            catch (err) {
-                console.error(CFG.LOG_PREFIX, "Mesh reset failed:", err);
+            if (!aaHasMotionTarget) {
+                try {
+                    mesh.reset(token2, 220).catch(() => { });
+                }
+                catch (err) {
+                    console.error(CFG.LOG_PREFIX, "Mesh reset failed:", err);
+                }
             }
         }
         const isLastQueuedAttack = (pendingTokenJobs.get(token1.id) ?? 0) <= 1;
@@ -1832,6 +2178,7 @@ class sweetyAnimationsMenu extends foundry.applications.api.ApplicationV2 {
       <fieldset class="settings-fieldset">
         <legend><i class="fas fa-plug" aria-hidden="true"></i> ${L("integrations.legend")}</legend>
         ${this._checkboxRow("midiTrigger", settings.midiTrigger !== false, L("midiTrigger.label"), L("midiTrigger.hint"))}
+        ${this._checkboxRow("aaSync", settings.aaSync !== false, L("aaSync.label"), L("aaSync.hint"))}
         ${_autoFinisherAvailable ? this._checkboxRow("autoFinisher", settings.autoFinisher === true, L("autoFinisher.label"), L("autoFinisher.hint")) : ""}
       </fieldset>
       <footer class="form-footer">
@@ -1855,6 +2202,7 @@ class sweetyAnimationsMenu extends foundry.applications.api.ApplicationV2 {
                 "enableAutoPan",
                 "gmIgnoreCamera",
                 "midiTrigger",
+                "aaSync",
                 "autoFinisher"
             ]) {
                 const input = html.querySelector(`input[name="${key}"]`);
@@ -1901,6 +2249,7 @@ Hooks.once("init", () => {
             enableAutoPan: true,
             gmIgnoreCamera: false,
             midiTrigger: true,
+            aaSync: true,
             autoFinisher: false
         }
     });
@@ -1926,6 +2275,16 @@ Hooks.on("canvasTearDown", () => {
     attackQueues.clear();
     pendingTokenJobs.clear();
     comboStateByToken.clear();
+    for (const t of [..._pendingAATickets]) {
+        t.release({ abort: true });
+    }
+    _pendingAATickets.length = 0;
+    _deferredDamageHits.length = 0;
+    for (const waiters of _aaTicketWaiters.values()) {
+        for (const wake of waiters)
+            wake();
+    }
+    _aaTicketWaiters.clear();
     savedCameraPosition = null;
     cinemaDepth = 0;
     cameraReturnGen++;
@@ -1956,26 +2315,97 @@ Hooks.on("dnd5e.postRollAttack", async (rolls, data) => {
     const attackType = subject.attack?.type?.value ?? subject.actionType;
     const classification = subject.attack?.type?.classification ?? null;
     const delivery = classifyItemAttack(item, attackType, classification);
-    if (!delivery)
+    const token1 = resolveToken(subject.token ?? subject.actor?.getActiveTokens()?.[0]);
+    if (!delivery) {
+        if (token1)
+            flushUnclaimedAATicketsForToken(token1.id);
         return;
+    }
     const finalTargets = Array.from(game.user.targets ?? []);
-    if (finalTargets.length < 1)
+    if (finalTargets.length < 1) {
+        if (token1)
+            flushUnclaimedAATicketsForToken(token1.id);
         return;
+    }
     const total = rolls[0]?.total;
-    if (!Number.isFinite(total))
+    if (!Number.isFinite(total)) {
+        if (token1)
+            flushUnclaimedAATicketsForToken(token1.id);
         return;
-    const token1 = resolveToken(subject.token ?? subject.actor?.getActiveTokens()[0]);
+    }
     const token2 = resolveToken(finalTargets[0]);
-    if (!token1 || !token2 || token1.id === token2.id)
+    if (!token1 || !token2 || token1.id === token2.id) {
+        if (token1)
+            flushUnclaimedAATicketsForToken(token1.id);
         return;
+    }
     const AC = token2.actor?.system?.attributes?.ac?.value;
-    if (AC == null || !Number.isFinite(Number(AC)))
+    if (AC == null || !Number.isFinite(Number(AC))) {
+        flushUnclaimedAATicketsForToken(token1.id);
         return;
+    }
     const isCritical = detectCritical(rolls[0]);
     const isFumble = detectFumble(rolls[0]);
     const isRanged = delivery === "rwak" || delivery === "rsak";
     const attackState = determineAttackState(total, Number(AC), isCritical, isRanged, token2, isFumble);
+    if ((attackState === "hit" || attackState === "crit") && aaDefersAttackToDamage(subject, settings)) {
+        deferAttackForDamageRoll({ attacker: token1, target: token2, attackState, item, delivery, activity: subject });
+        return;
+    }
+    if (aaSyncActive(settings)) {
+        // Allow AA's async `dnd5e.rollAttackV2` handler to finish registering its deferral ticket
+        await waitForAATicket(token1.id, 90);
+    }
     await playAttackAnimation({ attacker: token1, target: token2, attackState, item, delivery });
+});
+Hooks.on("dnd5e.rollDamageV2", async (rolls, data) => {
+    if (!isDnd5e())
+        return;
+    const settings = getAnimSettings();
+    if (!shouldPlayAnimation(settings) || !aaSyncActive(settings) || !aaPlaysOnDamageCore())
+        return;
+    pruneExpiredDeferredHits();
+    if (!_deferredDamageHits.length)
+        return;
+    const activity = data?.subject ?? null;
+    const item = activity?.item ?? activity?.parent?.parent ?? null;
+    const attackerToken = resolveToken(activity?.token ?? item?.parent?.getActiveTokens?.()?.[0] ?? activity?.actor?.getActiveTokens?.()?.[0]);
+    const activityUuid = activity?.uuid ?? null;
+    const itemId = item?.id ?? null;
+    let idx = -1;
+    if (activityUuid) {
+        idx = _deferredDamageHits.findIndex((e) => e.activityUuid && e.activityUuid === activityUuid);
+    }
+    if (idx < 0 && attackerToken) {
+        if (itemId) {
+            idx = _deferredDamageHits.findIndex((e) => e.attackerId === attackerToken.id && e.itemId === itemId);
+        }
+        if (idx < 0) {
+            idx = _deferredDamageHits.findIndex((e) => e.attackerId === attackerToken.id);
+        }
+    }
+    if (idx < 0 && itemId) {
+        idx = _deferredDamageHits.findIndex((e) => e.itemId === itemId);
+    }
+    if (idx < 0)
+        return;
+    const [entry] = _deferredDamageHits.splice(idx, 1);
+    let attackState = entry.attackState;
+    if (rolls?.[0] && detectCritical(rolls[0])) {
+        attackState = "crit";
+    }
+    // Allow AA's async `dnd5e.rollDamageV2` handler to finish registering its deferral ticket
+    const waitTokenId = attackerToken?.id ?? entry.attackerId;
+    if (waitTokenId)
+        await waitForAATicket(waitTokenId, 90);
+    const attacker = attackerToken ?? resolveToken(entry.attackerId);
+    const target = resolveToken(entry.targetId);
+    if (!attacker || !target || attacker.id === target.id) {
+        if (attacker)
+            flushUnclaimedAATicketsForToken(attacker.id);
+        return;
+    }
+    await playAttackAnimation({ attacker, target, attackState, item: entry.item ?? item, delivery: entry.delivery });
 });
 Hooks.on("dnd5e.postUseActivity", async (activity) => {
     if (!isDnd5e())
@@ -1988,7 +2418,8 @@ Hooks.on("dnd5e.postUseActivity", async (activity) => {
     const isTouchRange = activity.range?.units === "touch";
     if (!isTouchRange)
         return;
-    await sleep(100);
+    const syncAA = aaSyncActive(settings);
+    await sleep(syncAA ? Math.max(40, getAAGlobalDelayMs()) : 100);
     const targets = Array.from(game.user.targets ?? []);
     if (!targets.length)
         return;
@@ -1996,7 +2427,8 @@ Hooks.on("dnd5e.postUseActivity", async (activity) => {
     const token2 = resolveToken(targets[0]);
     if (!token1 || !token2 || token1.id === token2.id)
         return;
-    await sleep(250);
+    if (!syncAA)
+        await sleep(250);
     const pos = computePosBetween(token1, token2);
     const mesh = showstopper.meshAnim;
     if (!mesh)

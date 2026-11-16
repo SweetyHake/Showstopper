@@ -13,7 +13,10 @@
  * the `showstopper-plus` expansion module.
  */
 import {
+  aaDefersAttackToDamage,
   classifyItemAttack,
+  deferAttackForDamageRoll,
+  flushUnclaimedAATicketsForToken,
   getAnimSettings,
   isDnd5e,
   resolveToken,
@@ -31,6 +34,9 @@ Hooks.on("midi-qol.AttackRollComplete", async (workflow) => {
   const settings = getAnimSettings();
   if (!midiTriggerActive(settings)) return;
 
+  const attacker = resolveToken(workflow.token);
+  if (!attacker) return;
+
   // Melee, ranged, and spell attacks — shared classifier with the dnd5e path.
   const item = workflow.item ?? null;
   const attackType = workflow.activity?.attack?.type?.value
@@ -38,12 +44,13 @@ Hooks.on("midi-qol.AttackRollComplete", async (workflow) => {
     ?? item?.system?.actionType;
   const classification = workflow.activity?.attack?.type?.classification ?? null;
   const delivery = classifyItemAttack(item, attackType, classification);
-  if (!delivery) return;
 
-  const attacker = resolveToken(workflow.token);
   const targetRef = [...(workflow.targets ?? [])][0] ?? null;
   const target = resolveToken(targetRef);
-  if (!attacker || !target || attacker.id === target.id) return;
+  if (!delivery || !target || attacker.id === target.id) {
+    flushUnclaimedAATicketsForToken(attacker.id);
+    return;
+  }
 
   const total = Number(workflow.attackTotal ?? 0);
   const AC = target.actor?.system?.attributes?.ac?.value;
@@ -59,7 +66,26 @@ Hooks.on("midi-qol.AttackRollComplete", async (workflow) => {
     attackState = "miss";
   }
 
+  if ((attackState === "hit" || attackState === "crit") && aaDefersAttackToDamage(workflow.activity, settings)) {
+    deferAttackForDamageRoll({
+      attacker,
+      target,
+      attackState,
+      item,
+      delivery,
+      activity: workflow.activity
+    });
+    return;
+  }
+
   // Deliberate await: callMidiHooks awaits handlers so midi's damage phase
   // (autoRollDamage) and subsequent hooks start AFTER the cinematic, not on top of it.
   await playAttackAnimation({ attacker, target, attackState, item, delivery });
 });
+
+for (const hookName of ["midi-qol.preCleanup", "midi-qol.RollComplete"]) {
+  Hooks.on(hookName, (workflow) => {
+    const tok = resolveToken(workflow?.token);
+    if (tok) flushUnclaimedAATicketsForToken(tok.id, { abort: Boolean(workflow?.aborted) });
+  });
+}

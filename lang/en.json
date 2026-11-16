@@ -1576,6 +1576,10 @@
         "label": "Trigger via midi-qol",
         "hint": "Read hits, misses, and crits directly from midi-qol"
       },
+      "aaSync": {
+        "label": "Sync with Automated Animations",
+        "hint": "Align token lunges, shots, and target reactions with Automated Animations"
+      },
       "autoFinisher": {
         "label": "Auto-Finishers",
         "hint": "Play a damage-typed finisher when an NPC drops to 0 HP. Requires midi-qol"
