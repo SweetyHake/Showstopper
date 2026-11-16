@@ -3266,8 +3266,13 @@ if (hasPlus) {
       //     scene background and lower objects receive Depth-of-Field blur (`dofBlurPx > 3.0`),
       //     while the 60 ft token itself stays sharp (`dofBlurPx === 0`) at normal screen scale (`perspectiveScale === 1.0`).
       const p10ftFromGround = JA.computeElevationPerspective(10, 0, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 1 });
+      const p10ftParallax = JA.computeElevationPerspective(10, 0, {
+        gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 1,
+        tokenCenter: { x: 700, y: 200 }, cameraCenter: { x: 300, y: 200 }
+      });
       const pGroundFrom10ft = JA.computeElevationPerspective(0, 10, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 0 });
       const pGroundFrom20ft = JA.computeElevationPerspective(0, 20, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 0 });
+      const pGroundFrom30ft = JA.computeElevationPerspective(0, 30, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 0 });
       const pHighZoomOut = JA.computeElevationPerspective(60, 0, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 1, cameraScale: 0.6 });
       const pHighZoomMid = JA.computeElevationPerspective(60, 0, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 1, cameraScale: 1.0 });
       const pHighZoomNear = JA.computeElevationPerspective(60, 0, { gridSize: 100, gridDistance: 5, tokenSize: 100, hoverBlend: 1, cameraScale: 1.28 });
@@ -3356,14 +3361,14 @@ if (hasPlus) {
       canvas.tokens.controlled = prevControlled;
       check(
         p10ftFromGround.worldScale > 1.01 && p10ftFromGround.worldScale < 1.04 &&
-        pGroundFrom10ft.dofBlurPx === 0 && pGroundFrom20ft.dofBlurPx > 0.15 && pGroundFrom20ft.dofBlurPx < 0.45 &&
+        pGroundFrom10ft.dofBlurPx === 0 && pGroundFrom20ft.dofBlurPx === 0 && pGroundFrom30ft.dofBlurPx < 0.22 &&
         pHighZoomOut.worldScale < pHighZoomMid.worldScale && pHighZoomMid.worldScale < pHighZoomNear.worldScale &&
-        pHighZoomOut.dofBlurPx < 0.45 && pHighZoomNear.dofBlurPx > 1.8 &&
+        pHighZoomOut.dofBlurPx < 0.25 && pHighZoomNear.dofBlurPx > 1.2 &&
         pHighZoomOut.cameraOcclusionAlpha === 1 && pHighZoomNear.cameraOcclusionAlpha > 0.2 && pHighZoomNear.cameraOcclusionAlpha < 0.9 && pHighZoomIn.cameraOcclusionAlpha === 0 &&
         pHighFromGround.worldScale > 1.25 && pHighFromGround.perspectiveScale > 1.25 && pHighFromGround.perspectiveOffsetY < -35 &&
-        pHighFromGround.parallaxOffsetX > 20 && pHighParallaxNorthCam.parallaxOffsetY > 5 &&
+        p10ftParallax.parallaxOffsetX > 15 && pHighFromGround.parallaxOffsetX > p10ftParallax.parallaxOffsetX && pHighParallaxNorthCam.parallaxOffsetY > 30 &&
         pHighFromGround.shadowScaleMult < 0.70 && pHighFromGround.shadowAlphaMult < 0.66 &&
-        pGroundFromHigh.cameraZoom < 0.80 && pGroundFromHigh.perspectiveScale < 0.80 && pGroundFromHigh.dofBlurPx > 1.5 && pGroundFromHigh.dofBlurPx < 2.5 &&
+        pGroundFromHigh.cameraZoom < 0.80 && pGroundFromHigh.perspectiveScale < 0.80 && pGroundFromHigh.dofBlurPx > 0.70 && pGroundFromHigh.dofBlurPx < 1.35 &&
         Math.abs(pHighSelf.perspectiveScale - 1) < 1e-6 && pHighSelf.dofBlurPx === 0 && pHighSelf.shadowOffsetY > 20 &&
         highScaleFromGround > 0.8 * 1.35 && highYFromGround < 250 - 60 &&
         Math.abs(groundScaleNormal - 0.8) < 1e-6 &&
@@ -3372,7 +3377,7 @@ if (hasPlus) {
         Math.abs(groundScaleRestored - 0.8) < 1e-6 &&
         visStart === 25 && visMid > 25 && visMid < 60 && Math.abs(visMid - obsMid) < 1e-6 &&
         visEnd === 60 && obsEnd === 60 && tickerStoppedCleanly,
-        `elevation-perspective: гладкий C²-старт на 10..20 фт (scale10=${p10ftFromGround.worldScale.toFixed(3)}, blur20=${pGroundFrom20ft.dofBlurPx.toFixed(2)}px), 3D-объём при зуме к 60 фт (ws=${pHighZoomOut.worldScale.toFixed(2)}->${pHighZoomMid.worldScale.toFixed(2)}->${pHighZoomNear.worldScale.toFixed(2)}, bokeh=${pHighZoomNear.dofBlurPx.toFixed(2)}px, alpha=${pHighZoomOut.cameraOcclusionAlpha}->${pHighZoomNear.cameraOcclusionAlpha.toFixed(2)}->${pHighZoomIn.cameraOcclusionAlpha}), 360°-параллакс (dx=+${pHighFromGround.parallaxOffsetX.toFixed(1)}, dy=+${pHighParallaxNorthCam.parallaxOffsetY.toFixed(1)}) и взгляд с 60 фт (camZoom=${pGroundFromHigh.cameraZoom.toFixed(2)}, dofBlur=${pGroundFromHigh.dofBlurPx.toFixed(2)}px)`
+        `elevation-perspective: чистый резкий старт 10..30 фт (scale10=${p10ftFromGround.worldScale.toFixed(3)}, blur20=${pGroundFrom20ft.dofBlurPx.toFixed(2)}px, blur30=${pGroundFrom30ft.dofBlurPx.toFixed(2)}px), 3D-объём при зуме к 60 фт (ws=${pHighZoomOut.worldScale.toFixed(2)}->${pHighZoomMid.worldScale.toFixed(2)}->${pHighZoomNear.worldScale.toFixed(2)}, bokeh=${pHighZoomNear.dofBlurPx.toFixed(2)}px, alpha=${pHighZoomOut.cameraOcclusionAlpha}->${pHighZoomNear.cameraOcclusionAlpha.toFixed(2)}->${pHighZoomIn.cameraOcclusionAlpha}), ощутимый 360°-параллакс (dx10=+${p10ftParallax.parallaxOffsetX.toFixed(1)}, dx60=+${pHighFromGround.parallaxOffsetX.toFixed(1)}, dy60=+${pHighParallaxNorthCam.parallaxOffsetY.toFixed(1)}) и взгляд с 60 фт (camZoom=${pGroundFromHigh.cameraZoom.toFixed(2)}, dofBlur=${pGroundFromHigh.dofBlurPx.toFixed(2)}px)`
       );
 
       // Verify suppression of per-frame private `#animationData.elevation` interpolation in Foundry v14

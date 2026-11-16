@@ -3222,7 +3222,8 @@ export function computeElevationPerspective(
   const rho = groundCells > 0 ? (Math.max(0, relTokElev) / Math.max(1e-3, cameraAltitudeFt)) : 0;
 
   // Smoothly fade out an elevated token as the camera lens drops below its flight level (`rho: 0.80 -> 1.06`)
-  const occHeightGate = _smootherstep(Math.max(0, Math.min(1, (groundCells - 2.0) / 2.0)));
+  const occHeightGate = _smootherstep(Math.max(0, Math.min(1, (groundCells - 4.0) / 3.0)));
+  const bokehHeightGate = _smootherstep(Math.max(0, Math.min(1, (groundCells - 6.0) / 4.0)));
   let cameraOcclusionAlpha = 1;
   if (rho > 0.80 && occHeightGate > 0) {
     const tOcc = _smootherstep(Math.min(1, (rho - 0.80) / (1.06 - 0.80)));
@@ -3248,32 +3249,32 @@ export function computeElevationPerspective(
   const perspectiveScale = worldScale * cameraZoom;
 
   // 4) Optical `Depth of Field` (background + foreground + near-lens bokeh):
-  //    scaled by `zoomAperture` along a C² curve without a harsh turn-on threshold.
-  const zoomAperture = Math.max(0.68, Math.min(1.48, Math.pow(clampedCamScale, 0.42)));
+  //    starts cleanly above 20 ft so low altitudes stay sharp, and gently softens high-altitude planes.
+  const zoomAperture = Math.max(0.75, Math.min(1.18, Math.pow(clampedCamScale, 0.24)));
   let bgDofBlurPx = 0;
   if (deltaCells < 0) {
-    const dShift = Math.max(0, -deltaCells - 2.0);
+    const dShift = Math.max(0, -deltaCells - 4.0);
     if (dShift > 0) {
-      const dq = dShift / 10;
-      bgDofBlurPx = 2.85 * Math.tanh((dq * dq * 1.35) / (0.48 + dq)) * zoomAperture;
+      const dq = dShift / 12;
+      bgDofBlurPx = 2.15 * Math.tanh((dq * dq * 1.20) / (0.55 + dq)) * zoomAperture;
     }
   }
   let fgPlaneBlurPx = 0;
   if (deltaCells > 0) {
-    const uShift = Math.max(0, deltaCells - 5.5);
+    const uShift = Math.max(0, deltaCells - 8.0);
     if (uShift > 0) {
-      const uq = uShift / 12;
-      fgPlaneBlurPx = 0.95 * Math.tanh((uq * uq * 1.05) / (0.58 + uq)) * zoomAperture;
+      const uq = uShift / 14;
+      fgPlaneBlurPx = 0.60 * Math.tanh((uq * uq * 1.0) / (0.62 + uq)) * zoomAperture;
     }
   }
   let nearLensBlurPx = 0;
-  if (rho > 0.68 && occHeightGate > 0) {
-    const tBokeh = _smootherstep(Math.min(1, (rho - 0.68) / (1.05 - 0.68)));
-    nearLensBlurPx = 4.0 * (tBokeh * tBokeh * 0.35 + tBokeh * 0.65) * occHeightGate;
+  if (rho > 0.70 && bokehHeightGate > 0) {
+    const tBokeh = _smootherstep(Math.min(1, (rho - 0.70) / (1.05 - 0.70)));
+    nearLensBlurPx = 2.6 * (tBokeh * tBokeh * 0.35 + tBokeh * 0.65) * bokehHeightGate;
   }
   const dofBlurPx = Math.max(bgDofBlurPx, fgPlaneBlurPx + nearLensBlurPx);
 
-  // 5) Live radial 3D parallax relative to `cameraCenter`, intensifying as the camera zooms toward an airborne token
+  // 5) Live radial 3D parallax relative to `cameraCenter` with linear onset at low flight altitudes
   let parallaxOffsetX = 0;
   let parallaxOffsetY = 0;
   if (groundCells > 0 && options.tokenCenter && options.cameraCenter) {
@@ -3281,17 +3282,16 @@ export function computeElevationPerspective(
     const relY = (Number(options.tokenCenter.y) || 0) - (Number(options.cameraCenter.y) || 0);
     const relDist = Math.hypot(relX, relY);
     if (relDist > 0.5) {
-      const zoomParallaxGain = 0.65 + 0.85 * loomCurve;
-      const pStrength = 0.14 * groundHighNorm * zoomParallaxGain;
-      const maxShift = g * (0.08 + 0.54 * groundHighNorm);
+      const effAirCells = groundCells + hoverBlend * 0.35;
+      const parallaxAltNorm = Math.tanh(effAirCells / 8.5);
+      const zoomParallaxGain = 0.85 + 0.70 * loomCurve;
+      const pStrength = 0.27 * parallaxAltNorm * zoomParallaxGain;
+      const maxShift = g * (0.18 + 1.02 * parallaxAltNorm);
       const rawShift = relDist * pStrength;
       const clampedShift = maxShift * Math.tanh(rawShift / Math.max(1, maxShift));
       parallaxOffsetX = (relX / relDist) * clampedShift;
       const rawPy = (relY / relDist) * clampedShift;
-      const maxDownY = Math.max(0, -perspectiveOffsetY * 0.65 + hoverBlend * g * 0.14);
-      parallaxOffsetY = rawPy <= 0
-        ? rawPy
-        : (maxDownY > 0 ? maxDownY * Math.tanh(rawPy / maxDownY) : 0);
+      parallaxOffsetY = rawPy <= 0 ? rawPy : rawPy * 0.88;
     }
   }
 
@@ -3527,9 +3527,11 @@ const _dofProxyTarget: any = {
   getBounds() { return this.filterArea; }
 };
 
-function _resolveDofFilterResolution(nativeRes: number): number {
+function _resolveDofFilterResolution(nativeRes: number, blurPx: number = 1): number {
   const r = Number(nativeRes) || 1;
-  return Math.min(1, Math.max(0.5, r));
+  return blurPx < 1.2
+    ? Math.min(1.5, Math.max(0.75, r))
+    : Math.min(1, Math.max(0.5, r));
 }
 
 function _isFullScreenDofLayer(obj: any, primary: any): boolean {
@@ -3574,7 +3576,7 @@ function _getPooledDofBlurFilter(poolIdx: number, blurPx: number, nativeRes: num
       return null;
     }
   }
-  const targetRes = _resolveDofFilterResolution(nativeRes);
+  const targetRes = _resolveDofFilterResolution(nativeRes, blurPx);
   if (filter.resolution !== targetRes) filter.resolution = targetRes;
   if (filter.quality !== 2) filter.quality = 2;
   if (Math.abs((Number(filter.blur) || 0) - blurPx) > 0.02) {
@@ -3600,7 +3602,7 @@ function _renderPrimaryChildrenWithGroupedDof(primary: any, renderer: any) {
       continue;
     }
     const blur = Number(ch._ssDofBlurPx) || 0;
-    if (blur <= 0.10) {
+    if (blur <= 0.22) {
       ch.render(renderer);
       i++;
       continue;
@@ -3616,7 +3618,7 @@ function _renderPrimaryChildrenWithGroupedDof(primary: any, renderer: any) {
         continue;
       }
       const nb = Number(nch._ssDofBlurPx) || 0;
-      if (nb <= 0.10 || Math.abs(nb - qBlur) > 0.08) break;
+      if (nb <= 0.22 || Math.abs(nb - qBlur) > 0.08) break;
       visibleCount++;
       j++;
     }
@@ -3674,7 +3676,7 @@ function _setObjectDofBlur(obj: any, blurPx: number, useScreenFilterArea: boolea
     return;
   }
   const BlurCls = (globalThis as any).PIXI?.BlurFilter ?? (globalThis as any).PIXI?.filters?.BlurFilter;
-  if (blurPx <= 0.10 || !BlurCls) {
+  if (blurPx <= 0.22 || !BlurCls) {
     obj._ssDofBlurPx = 0;
     _clearIndividualDofFilter(obj);
     _dofFilteredObjects.delete(obj);
@@ -3692,7 +3694,7 @@ function _setObjectDofBlur(obj: any, blurPx: number, useScreenFilterArea: boolea
   }
 
   const nativeRes = Number((globalThis as any).canvas?.app?.renderer?.resolution) || 1;
-  const targetRes = _resolveDofFilterResolution(nativeRes);
+  const targetRes = _resolveDofFilterResolution(nativeRes, blurPx);
   let filter = obj._ssDofBlurFilter;
   if (!filter) {
     try {
@@ -4341,7 +4343,7 @@ function _applyStationaryPerspectiveToToken(token: any, persp?: ElevationPerspec
     Math.abs(totalOffX) <= 0.05 &&
     Math.abs(totalOffY) <= 0.05 &&
     p.cameraOcclusionAlpha >= 0.999 &&
-    meshBlurPx <= 0.10 &&
+    meshBlurPx <= 0.22 &&
     clearance <= 0.05
   ) {
     if (token._ssPerspState) _clearStationaryPerspectiveForToken(token);
